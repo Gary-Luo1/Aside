@@ -56,7 +56,7 @@ npm run extension:build
 ```bash
 npm run extension:typecheck   # TypeScript 类型检查
 npm run extension:test        # 单元 + 集成测试
-npm run extension:test:e2e    # 端到端测试（默认有头浏览器；E2E_HEADLESS=1 可无头）
+npm run extension:test:e2e    # 端到端测试（有头浏览器，需图形环境；CI 用 xvfb 虚拟显示器）
 npm run extension:build       # 构建扩展（输出 extension/dist）
 npm run extension:check       # 全量检查：类型 + 测试 + E2E + 构建
 ```

@@ -17,7 +17,7 @@ jobs:
       - run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+      # 扩展在无头模式下不可靠（MV3 后台 service worker 启动问题），
+      # 用 xvfb 虚拟显示器以有头模式运行 E2E。
       - name: Full check (typecheck + unit + e2e + build)
-        run: npm run extension:check
-        env:
-          E2E_HEADLESS: "1"
+        run: xvfb-run -a npm run extension:check

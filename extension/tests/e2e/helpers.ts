@@ -16,16 +16,11 @@ export interface ExtensionFixture {
   extensionId: string;
 }
 
-// CI（GitHub Actions 自带 CI=true，或显式 E2E_HEADLESS=1）以无头模式运行；
-// 本地默认有头（真实浏览器窗口，适合拖选等交互验证）。
-const isCi = process.env.CI === "true" || process.env.E2E_HEADLESS === "1";
-
 export const test = base.extend<{ extension: ExtensionFixture }>({
   extension: async ({}, use) => {
     const context = await chromium.launchPersistentContext("", {
-      // 始终用 channel "chromium"（新无头模式）：无头时也支持扩展加载。
       channel: "chromium",
-      headless: isCi,
+      headless: false,
       args: [
         `--disable-extensions-except=${EXTENSION_PATH}`,
         `--load-extension=${EXTENSION_PATH}`,
