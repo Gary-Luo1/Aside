@@ -1,5 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
+// CI（GitHub Actions 自带 CI=true，或显式 E2E_HEADLESS=1）以无头模式运行；
+// 本地默认有头（真实浏览器窗口，适合拖选等交互验证）。
+const isCi = process.env.CI === "true" || process.env.E2E_HEADLESS === "1";
+
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 60_000,
@@ -7,9 +11,8 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    // CI 以无头模式运行；本地默认有头（需要真实浏览器窗口）。
-    headless: process.env.E2E_HEADLESS === "1",
-    channel: process.env.E2E_HEADLESS === "1" ? undefined : "chromium",
+    headless: isCi,
+    channel: isCi ? undefined : "chromium",
   },
   webServer: {
     command: "node tests/e2e/fake-api-server.mjs",
