@@ -12,7 +12,9 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     headless: isCi,
-    channel: isCi ? undefined : "chromium",
+    // 始终使用 channel "chromium"（新无头模式）：无头时也支持加载扩展，
+    // 且不需要 X 服务器；本地有头时行为不变。
+    channel: "chromium",
   },
   webServer: {
     command: "node tests/e2e/fake-api-server.mjs",
