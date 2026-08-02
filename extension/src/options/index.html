@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>I am Fine 设置</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">◈</span>
+          <div class="brand-name">
+            <strong>I AM FINE</strong>
+            <small>术语解释助手</small>
+          </div>
+        </div>
+        <div class="conn-state" aria-hidden="true">
+          <span class="dot"></span>
+          <span>本地配置</span>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="config-title">
+        <div class="panel-head">
+          <p class="kicker">设置</p>
+          <h1 id="config-title">接口设置</h1>
+          <p class="intro">
+            配置你的 OpenAI 兼容接口。配置只保存在当前浏览器本地，请求直接发往你填写的接口地址。
+          </p>
+        </div>
+
+        <form id="config-form" novalidate>
+          <div class="field">
+            <label for="base-url">API Base URL</label>
+            <input
+              id="base-url"
+              name="baseUrl"
+              type="url"
+              required
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="https://api.example.com/v1"
+            />
+            <p class="hint">以 https 开头；本地调试可用 http://localhost 或 http://127.0.0.1。</p>
+          </div>
+
+          <div class="field">
+            <label for="api-key">API Key</label>
+            <div class="key-row">
+              <input
+                id="api-key"
+                name="apiKey"
+                type="password"
+                required
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button type="button" id="toggle-key" class="secondary">显示</button>
+            </div>
+            <p class="hint">本地保存不等于操作系统级加密，建议使用独立、可撤销、有限额的密钥。</p>
+          </div>
+
+          <div class="field">
+            <label for="model">Model</label>
+            <input
+              id="model"
+              name="model"
+              type="text"
+              required
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="model-name"
+            />
+          </div>
+
+          <div class="field">
+            <label class="checkbox-row" for="restore-selection">
+              <input id="restore-selection" name="restoreSelection" type="checkbox" />
+              <span>在不允许选择的网页上恢复划词选择</span>
+            </label>
+            <p class="hint">
+              部分网页（如开启防复制的飞书文档）会禁止选中文字，导致无法划词解释。
+              开启后，扩展只在你尝试划选文字时恢复该区域的选择能力；仍只发送你选中的短文本，
+              不会复制或发送未选中内容。修改后刷新已打开的页面生效。
+            </p>
+          </div>
+
+          <p id="status" role="status" aria-live="polite" class="status"></p>
+
+          <div class="actions">
+            <button type="button" id="test-connection">测试连接</button>
+            <button type="submit" id="save" disabled>保存配置</button>
+            <button type="button" id="delete-config" class="danger" hidden>删除配置</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="privacy-title">
+        <div class="panel-head">
+          <p class="kicker">隐私</p>
+          <h2 id="privacy-title">隐私说明</h2>
+        </div>
+        <ul class="privacy-list">
+          <li>插件只发送你主动选中的文本，不读取所在段落、页面标题或网址。</li>
+          <li>请求直接发往你填写的 API Base URL，由对应模型厂商处理。</li>
+          <li>插件不保存查询历史；API Key 仅存于当前浏览器本地。</li>
+          <li>删除配置会同时移除 API Base URL、API Key 和 Model 三个字段。</li>
+        </ul>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

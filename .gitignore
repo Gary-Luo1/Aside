@@ -1,0 +1,13 @@
+node_modules/
+extension/dist/
+test-results/
+playwright-report/
+*.local.key
+.DS_Store
+
+# 内部文档与本地工作产物（不随公开仓库发布）
+plans/
+docs/PRD.md
+prototype/
+.scratch/
+extension-backup-*/

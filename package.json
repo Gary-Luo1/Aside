@@ -1,0 +1,21 @@
+{
+  "name": "i-am-fine-prototype",
+  "private": true,
+  "scripts": {
+    "prototype": "python3 -m http.server 4173 --directory prototype",
+    "extension:typecheck": "tsc -p extension/tsconfig.json --noEmit",
+    "extension:build": "node extension/scripts/build.mjs",
+    "extension:test": "vitest run --config extension/vitest.config.ts",
+    "extension:test:e2e": "playwright test --config extension/playwright.config.ts",
+    "extension:check": "npm run extension:typecheck && npm run extension:test && npm run extension:test:e2e && npm run extension:build"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/chrome": "^0.2.5",
+    "@types/node": "^26.1.2",
+    "esbuild": "^0.28.1",
+    "jsdom": "^30.0.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

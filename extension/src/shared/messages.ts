@@ -1,0 +1,159 @@
+/** 用户配置的 OpenAI 兼容接口参数。 */
+export interface AiConfig {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  /**
+   * 是否在禁止选择的网页（如开启防复制的飞书文档）上恢复划词选择。
+   * 默认 false；该设置不参与任何 API 请求。
+   */
+  restoreSelection?: boolean;
+}
+
+/** 双层解释结果。 */
+export interface Explanation {
+  professional: string;
+  plain: string;
+}
+
+export const ERROR_CODES = [
+  "unconfigured",
+  "invalid_term",
+  "invalid_config",
+  "network",
+  "auth",
+  "not_found",
+  "rate_limited",
+  "server_error",
+  "timeout",
+  "bad_response",
+  "unknown",
+] as const;
+
+export type ExtensionErrorCode = (typeof ERROR_CODES)[number];
+
+/** 稳定的错误码 + 用户可读信息，不携带原始异常、密钥或响应体。 */
+export interface ExtensionError {
+  code: ExtensionErrorCode;
+  message: string;
+}
+
+export const MESSAGE_TYPES = {
+  CONFIG_TEST_REQUEST: "CONFIG_TEST_REQUEST",
+  EXPLAIN_TERM_REQUEST: "EXPLAIN_TERM_REQUEST",
+  GET_UI_SETTINGS_REQUEST: "GET_UI_SETTINGS_REQUEST",
+} as const;
+
+/** content/options → 后台 的请求；载荷在后台可信边界重新校验。 */
+export type RuntimeRequest =
+  | { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig }
+  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string }
+  | { type: typeof MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST };
+
+/** 后台对解释请求的稳定响应。 */
+export type ExplainResult =
+  | { ok: true; explanation: Explanation }
+  | { ok: false; error: ExtensionError };
+
+/** 后台对连接测试请求的稳定响应。 */
+export type ConfigTestResult = { ok: true } | { ok: false; error: ExtensionError };
+
+/** GET_UI_SETTINGS_REQUEST 的真实回包形状。 */
+export interface UiSettingsResponse {
+  ok: true;
+  restoreSelection: boolean;
+}
+
+/** 内容脚本可读的 UI 设置；绝不携带 API Key 等敏感配置。 */
+export interface UiSettings {
+  restoreSelection: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+// —— 载荷守卫：后台在可信边界按具体类型分发，不再只信 type 字符串 ——
+
+export function isExplainTermRequest(
+  value: unknown,
+): value is { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string } {
+  return isRecord(value) && value.type === MESSAGE_TYPES.EXPLAIN_TERM_REQUEST && typeof value.term === "string";
+}
+
+export function isConfigTestRequest(
+  value: unknown,
+): value is { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig } {
+  return isRecord(value) && value.type === MESSAGE_TYPES.CONFIG_TEST_REQUEST && isRecord(value.config);
+}
+
+export function isUiSettingsRequest(
+  value: unknown,
+): value is { type: typeof MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST } {
+  return isRecord(value) && value.type === MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST;
+}
+
+// —— 响应守卫：助手函数校验真实回包形状，不再靠强转 ——
+
+export function isExplainResult(value: unknown): value is ExplainResult {
+  if (!isRecord(value)) return false;
+  if (value.ok === true) {
+    const explanation = value.explanation;
+    return (
+      isRecord(explanation) &&
+      typeof explanation.professional === "string" &&
+      typeof explanation.plain === "string"
+    );
+  }
+  return value.ok === false && isExtensionError(value.error);
+}
+
+export function isConfigTestResult(value: unknown): value is ConfigTestResult {
+  if (!isRecord(value)) return false;
+  if (value.ok === true) return true;
+  return value.ok === false && isExtensionError(value.error);
+}
+
+export function isUiSettingsResponse(value: unknown): value is UiSettingsResponse {
+  return isRecord(value) && value.ok === true && typeof value.restoreSelection === "boolean";
+}
+
+function isExtensionError(value: unknown): value is ExtensionError {
+  return isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
+}
+
+function unexpected(): ExtensionError {
+  return { code: "unknown", message: "发生未知错误，请重试。" };
+}
+
+/** chrome 消息 API 本身是 any；返回 unknown，由各助手用响应守卫校验。 */
+async function send(request: RuntimeRequest): Promise<unknown> {
+  return chrome.runtime.sendMessage(request);
+}
+
+export async function requestExplainTerm(term: string): Promise<ExplainResult> {
+  const response = await send({ type: MESSAGE_TYPES.EXPLAIN_TERM_REQUEST, term });
+  return isExplainResult(response) ? response : { ok: false, error: unexpected() };
+}
+
+export async function requestConfigTest(config: AiConfig): Promise<ConfigTestResult> {
+  const response = await send({ type: MESSAGE_TYPES.CONFIG_TEST_REQUEST, config });
+  return isConfigTestResult(response) ? response : { ok: false, error: unexpected() };
+}
+
+export async function requestUiSettings(): Promise<UiSettings> {
+  const response = await send({ type: MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST });
+  return isUiSettingsResponse(response)
+    ? { restoreSelection: response.restoreSelection }
+    : { restoreSelection: false };
+}
+
+// —— 发送方授权规则：与契约同住 ——
+
+export function isOptionsPageSender(sender: chrome.runtime.MessageSender): boolean {
+  return sender.url?.startsWith(`chrome-extension://${chrome.runtime.id}/`) ?? false;
+}
+
+export function isPageSender(sender: chrome.runtime.MessageSender): boolean {
+  return /^https?:\/\//.test(sender.url ?? "");
+}

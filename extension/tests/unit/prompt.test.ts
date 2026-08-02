@@ -1,0 +1,19 @@
+import { describe, expect, it } from "vitest";
+import { SYSTEM_PROMPT, buildConfigTestPrompt, buildUserPrompt } from "../../src/background/prompt";
+
+describe("prompt", () => {
+  it("系统指令要求只返回含 professional 与 plain 的 JSON", () => {
+    expect(SYSTEM_PROMPT).toContain("professional");
+    expect(SYSTEM_PROMPT).toContain("plain");
+    expect(SYSTEM_PROMPT).toContain("只返回一个 JSON 对象");
+  });
+
+  it("用户提示只包含被选中的名词", () => {
+    expect(buildUserPrompt("API")).toBe("请解释术语：API");
+    expect(buildUserPrompt("算法")).toContain("算法");
+  });
+
+  it("配置测试使用固定短词", () => {
+    expect(buildConfigTestPrompt()).toContain("API");
+  });
+});
