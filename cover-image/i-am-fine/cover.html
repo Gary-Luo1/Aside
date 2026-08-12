@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I am Fine 封面 · 暖色手绘治愈风</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { background: #F3EBDD; }
+
+  body {
+    font-family: "Yuanti SC", "Kaiti SC", "STKaiti", "Xingkai SC", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .cover {
+    position: relative;
+    width: 1080px;
+    height: 1440px;
+    overflow: hidden;
+    background:
+      radial-gradient(560px 470px at 96% 0%, rgba(246, 173, 85, 0.38), transparent 62%),
+      radial-gradient(640px 540px at 0% 100%, rgba(254, 215, 170, 0.8), transparent 62%),
+      #FFFAF0;
+    padding: 72px 84px 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .cover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.32;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.035'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .kicker {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    padding: 14px 34px;
+    border: 3px dashed #ED8936;
+    border-radius: 999px;
+    background: rgba(237, 137, 54, 0.10);
+    color: #B25C2B;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    transform: rotate(-1.2deg);
+  }
+
+  .title {
+    position: relative;
+    z-index: 1;
+    margin-top: 34px;
+    text-align: center;
+    font-size: 86px;
+    font-weight: 800;
+    line-height: 1.42;
+    color: #744210;
+    letter-spacing: 2px;
+  }
+
+  .title .line2 {
+    display: inline-block;
+    transform: rotate(0.7deg);
+  }
+
+  .hl {
+    position: relative;
+    display: inline-block;
+    padding: 0 10px;
+    z-index: 0;
+  }
+
+  .hl::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 22%;
+    bottom: 10%;
+    background: rgba(253, 216, 106, 0.9);
+    transform: rotate(-1.6deg) skewX(-6deg);
+    border-radius: 8px;
+    z-index: -1;
+  }
+
+  .squiggle {
+    position: relative;
+    z-index: 1;
+    margin-top: 26px;
+    width: 620px;
+  }
+
+  .subtitle {
+    position: relative;
+    z-index: 1;
+    margin-top: 28px;
+    text-align: center;
+    font-size: 41px;
+    line-height: 1.58;
+    color: #8C6D4D;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .subtitle em {
+    font-style: normal;
+    color: #B25C2B;
+    font-weight: 800;
+  }
+
+  /* ── 手绘场景 ── */
+  .scene {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    margin-top: 30px;
+  }
+
+  .sun {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  .paper {
+    position: absolute;
+    left: 4%;
+    top: 13%;
+    width: 63%;
+    height: 64%;
+    background: #FFFDF8;
+    border: 4px solid #D9B98A;
+    border-radius: 28px 36px 25px 34px;
+    transform: rotate(-2.4deg);
+    box-shadow: 10px 14px 0 rgba(116, 66, 16, 0.08);
+    padding: 42px 46px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+
+  .scribble {
+    width: 100%;
+    height: 34px;
+  }
+
+  .scribble.short { width: 76%; }
+
+  .hl-line {
+    font-size: 35px;
+    font-weight: 600;
+    color: #8C6D4D;
+    letter-spacing: 1px;
+  }
+
+  .hl-line .hl {
+    font-size: 42px;
+    font-weight: 800;
+    color: #744210;
+  }
+
+  .lens {
+    position: absolute;
+    left: 40%;
+    top: 26%;
+    transform: rotate(-16deg);
+    filter: drop-shadow(8px 12px 10px rgba(116, 66, 16, 0.16));
+  }
+
+  .arrow {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    transform: rotate(-9deg);
+  }
+
+  .bubble {
+    position: absolute;
+    right: 0;
+    top: 8%;
+    width: 372px;
+    background: #FFFDF6;
+    border: 4px solid #C05621;
+    border-radius: 26px 32px 22px 30px;
+    padding: 26px 30px 22px;
+    box-shadow: 8px 12px 0 rgba(192, 86, 33, 0.10);
+    transform: rotate(1.6deg);
+  }
+
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: -17px;
+    top: 46%;
+    width: 28px;
+    height: 28px;
+    background: #FFFDF6;
+    border-left: 4px solid #C05621;
+    border-bottom: 4px solid #C05621;
+    transform: rotate(45deg);
+    border-radius: 4px;
+  }
+
+  .bubble .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 33px;
+    color: #744210;
+    line-height: 1.55;
+    font-weight: 600;
+  }
+
+  .bubble .row + .row { margin-top: 14px; }
+
+  .bubble .row b {
+    font-size: 32px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .bubble .row.pro b { color: #ED8936; }
+  .bubble .row.plain b { color: #E8655A; }
+
+  .dot {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    transform: rotate(-6deg);
+  }
+
+  .dot.pro { background: #ED8936; }
+  .dot.plain { background: #E8655A; }
+
+  .heart {
+    position: absolute;
+    right: 2%;
+    top: 0;
+    transform: rotate(8deg);
+  }
+
+  .star-a {
+    position: absolute;
+    left: 1%;
+    bottom: 2%;
+    font-size: 46px;
+    color: #ED8936;
+    transform: rotate(-10deg);
+  }
+
+  .smiley {
+    position: absolute;
+    right: 2%;
+    bottom: 4%;
+    transform: rotate(4deg);
+  }
+
+  .sprout {
+    position: absolute;
+    left: 46%;
+    bottom: 0;
+    transform: rotate(8deg);
+  }
+
+  .check {
+    position: absolute;
+    left: 69%;
+    bottom: 10%;
+    transform: rotate(-8deg);
+  }
+
+  .foot {
+    position: relative;
+    z-index: 1;
+    margin-top: 22px;
+    font-size: 26px;
+    letter-spacing: 3px;
+    color: rgba(140, 109, 77, 0.6);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <section class="cover">
+    <span class="kicker">浏览器插件 · I am Fine</span>
+
+    <h1 class="title">
+      选中<span class="hl">看不懂的词</span><br>
+      <span class="line2">不离开页面就懂了</span>
+    </h1>
+
+    <svg class="squiggle" viewBox="0 0 620 26" fill="none" aria-hidden="true">
+      <path d="M10 14 Q 48 4 88 14 T 166 14 T 244 14 T 322 14 T 400 14 T 478 14 T 556 14 T 610 14"
+        stroke="#C05621" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+    </svg>
+
+    <p class="subtitle">选中即得 <em>专业解释 + 通俗解释</em><br>阅读不再被打断</p>
+
+    <div class="scene">
+      <!-- 太阳涂鸦 -->
+      <svg class="sun" width="170" height="140" viewBox="0 0 170 140" fill="none">
+        <circle cx="62" cy="60" r="17" stroke="#F6AD55" stroke-width="5" stroke-linecap="round"/>
+        <g stroke="#ED8936" stroke-width="5" stroke-linecap="round">
+          <line x1="62" y1="22" x2="62" y2="10"/>
+          <line x1="62" y1="98" x2="62" y2="112"/>
+          <line x1="24" y1="60" x2="12" y2="60"/>
+          <line x1="100" y1="60" x2="112" y2="60"/>
+          <line x1="35" y1="33" x2="26" y2="24"/>
+          <line x1="89" y1="33" x2="98" y2="24"/>
+          <line x1="35" y1="87" x2="26" y2="96"/>
+          <line x1="89" y1="87" x2="98" y2="96"/>
+        </g>
+      </svg>
+
+      <!-- 教程纸张 -->
+      <div class="paper">
+        <svg class="scribble" viewBox="0 0 560 34" fill="none">
+          <path d="M8 18 Q 34 9 62 18 T 118 18 T 174 18 T 230 18 T 286 18 T 342 18 T 398 18 T 454 18 T 510 18 T 550 18"
+            stroke="#D9CFC0" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <svg class="scribble short" viewBox="0 0 420 34" fill="none">
+          <path d="M8 18 Q 30 9 54 18 T 102 18 T 150 18 T 198 18 T 246 18 T 294 18 T 342 18 T 388 18 T 408 18"
+            stroke="#D9CFC0" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <p class="hl-line">这份教程里说的 <span class="hl">云原生</span> 到底是什么意思？</p>
+        <svg class="scribble" viewBox="0 0 560 34" fill="none">
+          <path d="M8 18 Q 36 9 66 18 T 126 18 T 186 18 T 246 18 T 306 18 T 366 18 T 426 18 T 486 18 T 546 18"
+            stroke="#D9CFC0" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <!-- 放大镜 -->
+      <svg class="lens" width="250" height="250" viewBox="0 0 220 220" fill="none">
+        <circle cx="95" cy="95" r="70" fill="rgba(214,235,255,0.6)" stroke="#A9824F" stroke-width="8"/>
+        <path d="M52 70 Q 68 56 88 58" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+        <line x1="150" y1="150" x2="203" y2="203" stroke="#A9824F" stroke-width="13" stroke-linecap="round"/>
+        <line x1="150" y1="150" x2="203" y2="203" stroke="#C9A96B" stroke-width="4" stroke-linecap="round"/>
+        <text x="95" y="112" text-anchor="middle" font-size="34"
+          font-family="'Kaiti SC','STKaiti','Xingkai SC',serif" fill="#B25C2B" font-weight="700">云原生</text>
+      </svg>
+
+      <!-- 波浪箭头 -->
+      <svg class="arrow" width="300" height="170" viewBox="0 0 300 170" fill="none">
+        <path d="M24 148 Q 96 84 168 96 T 284 42" stroke="#C05621" stroke-width="6" stroke-linecap="round"/>
+        <path d="M266 28 L 292 40 L 276 56 Z" fill="#C05621"/>
+      </svg>
+
+      <!-- 解释气泡 -->
+      <div class="bubble">
+        <p class="row pro"><span class="dot pro"></span><b>专业解释</b>准确 · 不绕弯</p>
+        <p class="row plain"><span class="dot plain"></span><b>通俗解释</b>一读就懂</p>
+      </div>
+
+      <!-- 涂鸦点缀 -->
+      <svg class="heart" width="64" height="58" viewBox="0 0 64 58" fill="none">
+        <path d="M32 52 C 10 36 2 22 8 12 C 13 4 24 4 32 14 C 40 4 51 4 56 12 C 62 22 54 36 32 52 Z"
+          stroke="#E8655A" stroke-width="5" stroke-linejoin="round"/>
+      </svg>
+
+      <span class="star-a">✦</span>
+
+      <svg class="smiley" width="86" height="74" viewBox="0 0 86 74" fill="none">
+        <circle cx="43" cy="37" r="31" stroke="#ED8936" stroke-width="5"/>
+        <circle cx="33" cy="32" r="4" fill="#744210"/>
+        <circle cx="53" cy="32" r="4" fill="#744210"/>
+        <path d="M26 48 Q 43 62 60 48" stroke="#744210" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+
+      <svg class="sprout" width="70" height="64" viewBox="0 0 70 64" fill="none">
+        <path d="M35 58 C 35 40 35 26 35 14" stroke="#C05621" stroke-width="5" stroke-linecap="round"/>
+        <path d="M35 22 C 22 18 16 10 18 4 C 26 4 34 12 35 22 Z" fill="#F6AD55"/>
+        <path d="M35 34 C 46 30 54 24 54 16 C 44 16 37 24 35 34 Z" fill="#ED8936"/>
+      </svg>
+
+      <svg class="check" width="84" height="60" viewBox="0 0 84 60" fill="none">
+        <path d="M6 34 L 28 52 L 78 8" stroke="#ED8936" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <p class="foot">HAND-DRAWN SERIES · 2026.08</p>
+  </section>
+</body>
+</html>

@@ -4,6 +4,7 @@ import {
   expect,
   test as base,
   type BrowserContext,
+  type Frame,
   type Locator,
   type Page,
 } from "@playwright/test";
@@ -76,6 +77,21 @@ export async function openTutorialPage(context: BrowserContext): Promise<Page> {
   return page;
 }
 
+export async function openFramesPage(context: BrowserContext): Promise<Page> {
+  const page = await context.newPage();
+  await page.goto(`${FAKE_API_BASE}/frames.html`);
+  await expect(page.locator("h1")).toContainText("多帧教程页");
+  await expect.poll(() => page.frames().filter((frame) => frame !== page.mainFrame()).length).toBeGreaterThanOrEqual(4);
+  return page;
+}
+
+export async function getNamedFrame(page: Page, name: string): Promise<Frame> {
+  const frame = page.frame({ name });
+  expect(frame).not.toBeNull();
+  if (!frame) throw new Error(`未找到 frame：${name}`);
+  return frame;
+}
+
 /** 打开教程页、选中术语并等待解释卡片出现；configure 为 false 时跳过配置。 */
 export async function openExplanationCard(
   context: BrowserContext,
@@ -101,8 +117,12 @@ export async function openExplanationCard(
 }
 
 /** 用 Range 选中页面中的目标文本并触发 selectionchange。 */
-export async function selectText(page: Page, text: string): Promise<void> {
-  const found = await page.evaluate((target) => {
+export function selectText(page: Page, text: string): Promise<void> {
+  return selectTextInFrame(page.mainFrame(), text);
+}
+
+export async function selectTextInFrame(frame: Frame, text: string): Promise<void> {
+  const found = await frame.evaluate((target) => {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node: Node | null;
     while ((node = walker.nextNode())) {
@@ -120,7 +140,7 @@ export async function selectText(page: Page, text: string): Promise<void> {
     return false;
   }, text);
   expect(found).toBe(true);
-  await page.evaluate(() => {
+  await frame.evaluate(() => {
     document.dispatchEvent(new Event("selectionchange"));
   });
 }
@@ -148,6 +168,7 @@ export async function dragSelectText(
   target: string | DragTarget,
   options: DragOptions = {},
 ): Promise<void> {
+  await page.bringToFront();
   const startTarget = typeof target === "string" ? target : target.startText;
   const endTarget = typeof target === "string" ? target : target.endText;
   // 字符串目标需要把结束 Range 延伸到整个短语；DragTarget 只取结束词首字符

@@ -48,8 +48,8 @@ button:focus-visible {
 .trigger {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 0 18px;
+  min-height: 32px;
+  padding: 0 12px;
   color: #ffffff;
   border: 1px solid var(--accent);
   border-radius: 999px;

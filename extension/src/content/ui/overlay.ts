@@ -108,7 +108,6 @@ export class ExplanationOverlay implements OverlayApi {
     window.addEventListener("click", this.triggerClickHandler, true);
     this.shadowRoot.appendChild(trigger);
     this.place(trigger, data.anchor);
-    trigger.focus({ preventScroll: true });
   }
 
   /** 选区附近不可交互的提示（如超长/换行选词），不发送请求。 */

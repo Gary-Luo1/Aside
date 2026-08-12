@@ -46,9 +46,9 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const first = coordinator.explain("API", 1);
+    const first = coordinator.explain("API", 1, 0);
     await waitForCalls(calls, 1);
-    const second = coordinator.explain("算法", 1);
+    const second = coordinator.explain("算法", 1, 0);
     await waitForCalls(calls, 2);
 
     expect(calls[0]!.signal.aborted).toBe(true);
@@ -67,9 +67,9 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const first = coordinator.explain("API", 1);
+    const first = coordinator.explain("API", 1, 0);
     await waitForCalls(calls, 1);
-    const second = coordinator.explain("算法", 2);
+    const second = coordinator.explain("算法", 2, 0);
     await waitForCalls(calls, 2);
 
     expect(calls[0]!.signal.aborted).toBe(false);
@@ -84,9 +84,9 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const first = coordinator.explain("API", undefined);
+    const first = coordinator.explain("API", undefined, undefined);
     await waitForCalls(calls, 1);
-    const second = coordinator.explain("算法", undefined);
+    const second = coordinator.explain("算法", undefined, undefined);
     await waitForCalls(calls, 2);
 
     expect(calls[0]!.signal.aborted).toBe(false);
@@ -99,7 +99,7 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: false, reason: "absent" });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const result = await coordinator.explain("API", 1);
+    const result = await coordinator.explain("API", 1, 0);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -117,7 +117,7 @@ describe("ExplanationCoordinator", () => {
     });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const result = await coordinator.explain("API", 1);
+    const result = await coordinator.explain("API", 1, 0);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -131,7 +131,7 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const pending = coordinator.explain("API", 7);
+    const pending = coordinator.explain("API", 7, 0);
     await waitForCalls(calls, 1);
     expect(deps.explain).toHaveBeenCalledWith(sampleConfig, "API", expect.objectContaining({ signal: expect.any(AbortSignal) }));
     calls[0]!.resolve(okResult);
@@ -144,12 +144,12 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const first = coordinator.explain("API", 3);
+    const first = coordinator.explain("API", 3, 0);
     await waitForCalls(calls, 1);
     calls[0]!.resolve(okResult);
     await first;
 
-    const second = coordinator.explain("算法", 3);
+    const second = coordinator.explain("算法", 3, 0);
     await waitForCalls(calls, 2);
     expect(calls[1]!.signal.aborted).toBe(false);
     calls[1]!.resolve(okResult);
@@ -160,9 +160,9 @@ describe("ExplanationCoordinator", () => {
     const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
     const coordinator = new ExplanationCoordinator(deps);
 
-    const first = coordinator.explain("API", 5);
+    const first = coordinator.explain("API", 5, 0);
     await waitForCalls(calls, 1);
-    const second = coordinator.explain("算法", 5);
+    const second = coordinator.explain("算法", 5, 0);
     await waitForCalls(calls, 2);
 
     // 旧请求先结束（其 finally 不得删除新请求的会话），随后新请求照常拿到未中止 signal。
@@ -173,5 +173,37 @@ describe("ExplanationCoordinator", () => {
     calls[1]!.resolve(okResult);
     const r2 = await second;
     expect(r2.ok).toBe(true);
+  });
+
+  it("同标签页不同 frame 不互相中止", async () => {
+    const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
+    const coordinator = new ExplanationCoordinator(deps);
+
+    const first = coordinator.explain("API", 5, 1);
+    await waitForCalls(calls, 1);
+    const second = coordinator.explain("算法", 5, 2);
+    await waitForCalls(calls, 2);
+
+    expect(calls[0]!.signal.aborted).toBe(false);
+    expect(calls[1]!.signal.aborted).toBe(false);
+    calls[0]!.resolve(okResult);
+    calls[1]!.resolve(okResult);
+    await Promise.all([first, second]);
+  });
+
+  it("缺少 tab 或 frame 标识时请求各自独立", async () => {
+    const { deps, calls } = makeFake({ ok: true, config: sampleConfig });
+    const coordinator = new ExplanationCoordinator(deps);
+
+    const first = coordinator.explain("API", 5, undefined);
+    await waitForCalls(calls, 1);
+    const second = coordinator.explain("算法", undefined, 2);
+    await waitForCalls(calls, 2);
+
+    expect(calls[0]!.signal.aborted).toBe(false);
+    expect(calls[1]!.signal.aborted).toBe(false);
+    calls[0]!.resolve(okResult);
+    calls[1]!.resolve(okResult);
+    await Promise.all([first, second]);
   });
 });

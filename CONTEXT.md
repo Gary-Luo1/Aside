@@ -9,7 +9,7 @@
 | 术语（Term） | 用户选中的、等待解释的短文本；长度 1–60 字、不含换行，超出则只提示不请求 | shared/term.ts |
 | 选词会话（Selection Session） | 从用户划选到解释卡片出现的完整决策流程：拖选、键盘选词、提示、关闭、过期响应守卫 | content/session.ts |
 | 解释卡片（Explanation Card） | 选区附近浮动的双层解释 UI（专业解释 + 通俗解释），含入口、加载、成功、错误各态与宿主重挂载 | content/ui/overlay.ts |
-| 解释协调（Explanation Coordinator） | 后台按标签页管理在途解释请求；同一标签页新请求中止旧请求，避免重复计费 | background/explanation-coordinator.ts |
+| 解释协调（Explanation Coordinator） | 后台按标签页与 frame 管理在途解释请求；同一 frame 新请求中止旧请求，避免重复计费，不同 frame 互不影响 | background/explanation-coordinator.ts |
 | 配置（Config） | 用户配置的 OpenAI 兼容接口：Base URL、API Key、Model、恢复划词开关；合法性校验与读路径规范化只在一处 | shared/config.ts |
 | 消息契约（Message Contract） | 内容脚本/设置页与后台之间的请求、响应形状、载荷守卫与发送方授权规则，单一文件维护 | shared/messages.ts |
 | 连接测试（Connection Test） | 设置页用固定短词验证接口连通与输出结构，测试结果不持久化 | background/api-client.ts、background/prompt.ts |

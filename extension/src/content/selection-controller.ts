@@ -74,11 +74,11 @@ export class SelectionController {
   }
 
   private handleScroll(): void {
-    const anchor = this.session.anchor;
+    const currentAnchor = this.snapshotSelection()?.rect ?? null;
     this.apply(
       this.session.on({
         kind: "scroll",
-        anchorInViewport: anchor === null ? true : this.anchorInViewport(anchor),
+        anchorInViewport: currentAnchor === null ? false : this.anchorInViewport(currentAnchor),
       }),
     );
   }

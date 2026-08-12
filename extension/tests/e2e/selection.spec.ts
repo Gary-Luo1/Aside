@@ -3,10 +3,13 @@ import {
   FAKE_API_BASE,
   configureAndSave,
   dragSelectText,
+  getNamedFrame,
   lastFakeApiRequest,
+  openFramesPage,
   openTutorialPage,
   resetFakeApi,
   selectText,
+  selectTextInFrame,
   test,
 } from "./helpers";
 
@@ -58,6 +61,113 @@ test.describe("选词解释流程", () => {
 
     const { requestCount } = await lastFakeApiRequest();
     expect(requestCount).toBe(0);
+  });
+
+  test("划词后入口不抢焦点且入口保持紧凑", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+
+    await page.evaluate(() => {
+      const focusTarget = document.createElement("button");
+      focusTarget.id = "page-focus-target";
+      focusTarget.textContent = "页面焦点";
+      document.body.appendChild(focusTarget);
+      focusTarget.focus();
+    });
+    await selectText(page, "算法");
+
+    const trigger = page.getByRole("button", { name: "解释这个词" });
+    await expect(trigger).toBeVisible();
+    await expect
+      .poll(() => page.locator("#page-focus-target").evaluate((element) => element === document.activeElement))
+      .toBe(true);
+
+    const triggerBox = await trigger.boundingBox();
+    expect(triggerBox).not.toBeNull();
+    expect(triggerBox!.height).toBeLessThanOrEqual(36);
+    const selectionBox = await page.evaluate(() => {
+      const range = window.getSelection()?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      return rect ? { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } : null;
+    });
+    expect(selectionBox).not.toBeNull();
+    expect(
+      triggerBox!.x + triggerBox!.width <= selectionBox!.left ||
+        triggerBox!.x >= selectionBox!.right ||
+        triggerBox!.y + triggerBox!.height <= selectionBox!.top ||
+        triggerBox!.y >= selectionBox!.bottom,
+    ).toBe(true);
+  });
+
+  test("被动入口仍可通过键盘激活", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+
+    await selectText(page, "算法");
+    const trigger = page.getByRole("button", { name: "解释这个词" });
+    await expect(trigger).toBeVisible();
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toContainText("本次只使用了“算法”");
+  });
+
+  test("入口可见时页面复制事件仍可收到选区", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+
+    await page.evaluate(() => {
+      document.addEventListener(
+        "copy",
+        (event) => {
+          (window as unknown as { __copyProbe?: unknown }).__copyProbe = {
+            selectedText: window.getSelection()?.toString() ?? "",
+          };
+          event.preventDefault();
+        },
+        { capture: true, once: true },
+      );
+    });
+    await selectText(page, "算法");
+    await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+C" : "Control+C");
+
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __copyProbe?: { selectedText: string } }).__copyProbe))
+      .toEqual({ selectedText: "算法" });
+  });
+
+  test("入口可见时右键事件仍由页面收到", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+
+    await page.evaluate(() => {
+      document.addEventListener(
+        "contextmenu",
+        (event) => {
+          (window as unknown as { __contextMenuProbe?: boolean }).__contextMenuProbe = true;
+          event.preventDefault();
+        },
+        { capture: true, once: true },
+      );
+    });
+    await selectText(page, "算法");
+    await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await page.mouse.click(900, 600, { button: "right" });
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __contextMenuProbe?: boolean }).__contextMenuProbe))
+      .toBe(true);
+  });
+
+  test("选区滚出视口后被动入口关闭", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+    await page.setViewportSize({ width: 800, height: 300 });
+
+    await selectText(page, "算法");
+    const trigger = page.getByRole("button", { name: "解释这个词" });
+    await expect(trigger).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 700));
+    await expect(trigger).toHaveCount(0);
   });
 
   test("未配置时点击解释提示打开设置", async ({ extension }) => {
@@ -246,6 +356,9 @@ test.describe("选词解释流程", () => {
     await page.goto(`${FAKE_API_BASE}/protected.html`);
     await expect(page.locator("h1")).toContainText("受保护教程页");
 
+    await page.locator("#protected-action").click();
+    await expect(page.locator("#protected-action")).toHaveAttribute("data-clicked", "true");
+
     await dragSelectText(page, "加密");
     const trigger = page.getByRole("button", { name: "解释这个词" });
     await expect(trigger).toBeVisible();
@@ -291,5 +404,68 @@ test.describe("选词解释流程", () => {
     await expect(trigger).toBeVisible();
     await trigger.click();
     await expect(page.getByRole("dialog")).toContainText(`本次只使用了“算法”`);
+  });
+
+  test("HTTP/HTTPS 同源与跨源 frame 都能划词解释，特殊来源 frame 不注入", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openFramesPage(extension.context);
+    const sameFrame = await getNamedFrame(page, "same-origin-frame");
+    const crossFrame = await getNamedFrame(page, "cross-origin-frame");
+    const dataFrame = await getNamedFrame(page, "data-frame");
+
+    await selectTextInFrame(sameFrame, "算法");
+    const sameTrigger = sameFrame.getByRole("button", { name: "解释这个词" });
+    await expect(sameTrigger).toBeVisible();
+    await sameTrigger.click();
+    await expect(sameFrame.getByRole("dialog")).toContainText("本次只使用了“算法”");
+
+    await selectTextInFrame(crossFrame, "算法");
+    const crossTrigger = crossFrame.getByRole("button", { name: "解释这个词" });
+    await expect(crossTrigger).toBeVisible();
+    await crossTrigger.click();
+    await expect(crossFrame.getByRole("dialog")).toContainText("本次只使用了“算法”");
+
+    await expect(dataFrame.getByRole("button", { name: "解释这个词" })).toHaveCount(0);
+  });
+
+  test("不同 frame 的请求互不取消，且请求只包含选中术语", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    await resetFakeApi();
+    const page = await openFramesPage(extension.context);
+    const sameFrame = await getNamedFrame(page, "same-origin-frame");
+    const crossFrame = await getNamedFrame(page, "cross-origin-frame");
+
+    await selectTextInFrame(sameFrame, "缓存");
+    await sameFrame.getByRole("button", { name: "解释这个词" }).click();
+
+    await selectTextInFrame(crossFrame, "算法");
+    await crossFrame.getByRole("button", { name: "解释这个词" }).click();
+
+    await expect(crossFrame.getByRole("dialog")).toContainText("算法 的专业解释");
+    await expect(sameFrame.getByRole("dialog")).toContainText("缓存的慢响应定义");
+
+    const { requestCount, lastRequest } = await lastFakeApiRequest();
+    expect(requestCount).toBe(2);
+    const serialized = JSON.stringify(lastRequest);
+    expect(serialized).not.toContain("多帧教程页");
+    expect(serialized).not.toContain("嵌入教程帧");
+    expect(serialized).not.toContain("frame");
+  });
+
+  test("嵌套 frame 每个文档只初始化一个入口宿主", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openFramesPage(extension.context);
+    const nestedFrame = await getNamedFrame(page, "nested-frame");
+    const innerFrame = await getNamedFrame(page, "nested-inner-frame");
+
+    await expect
+      .poll(() => nestedFrame.locator("#i-am-fine-overlay").count())
+      .toBe(1);
+    await expect
+      .poll(() => innerFrame.locator("#i-am-fine-overlay").count())
+      .toBe(1);
+
+    await selectTextInFrame(innerFrame, "算法");
+    await expect(innerFrame.getByRole("button", { name: "解释这个词" })).toBeVisible();
   });
 });

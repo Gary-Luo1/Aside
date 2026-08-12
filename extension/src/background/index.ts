@@ -11,7 +11,7 @@ import { loadConfig, restrictStorageAccessLevel, validateConfig } from "../share
 import { explainTerm, testConnection } from "./api-client";
 import { ExplanationCoordinator } from "./explanation-coordinator";
 
-/** 解释请求统一交给协调模块：新请求自动中止同标签页旧请求，避免重复计费。 */
+/** 解释请求统一交给协调模块：新请求自动中止同一 frame 的旧请求，避免重复计费。 */
 const coordinator = new ExplanationCoordinator({ loadConfig, explain: explainTerm });
 
 // 安装时唤醒 service worker（MV3 惰性启动），也让 E2E 能稳定拿到扩展 id。
@@ -59,7 +59,7 @@ async function handleMessage(message: unknown, sender: chrome.runtime.MessageSen
         error: { code: "invalid_term", message: "请选择一个短名词（1-60 个字符）。" },
       };
     }
-    return coordinator.explain(term, sender.tab?.id);
+    return coordinator.explain(term, sender.tab?.id, sender.frameId);
   }
 
   if (isUiSettingsRequest(message)) {

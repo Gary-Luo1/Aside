@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>I am Fine 卡片总览</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #EAE3D4; padding: 24px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .cell { position: relative; }
+  .cell img {
+    display: block;
+    width: 100%;
+    border-radius: 14px;
+    box-shadow: 0 10px 26px rgba(36, 48, 42, 0.18);
+  }
+  .cell .no {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(36, 48, 42, 0.72);
+    color: #FDF9EF;
+    font: 700 20px/1 "PingFang SC", sans-serif;
+    padding: 8px 14px;
+    border-radius: 999px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><span class="no">01</span><img src="card-01.png" alt="封面"></div>
+    <div class="cell"><span class="no">02</span><img src="card-02.png" alt="痛点"></div>
+    <div class="cell"><span class="no">03</span><img src="card-03.png" alt="是什么"></div>
+    <div class="cell"><span class="no">04</span><img src="card-04.png" alt="核心效果"></div>
+    <div class="cell"><span class="no">05</span><img src="card-05.png" alt="实现方式"></div>
+    <div class="cell"><span class="no">06</span><img src="card-06.png" alt="隐私"></div>
+    <div class="cell"><span class="no">07</span><img src="card-07.png" alt="细节"></div>
+    <div class="cell"><span class="no">08</span><img src="card-08.png" alt="总结"></div>
+  </div>
+</body>
+</html>

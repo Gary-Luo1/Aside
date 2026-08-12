@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I am Fine 封面 · 黑板教学风</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { background: #0C0F15; }
+
+  body {
+    font-family: "Kaiti SC", "STKaiti", "Xingkai SC", "KaiTi", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .cover {
+    position: relative;
+    width: 1080px;
+    height: 1440px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #7A4A21 0%, #5B3517 55%, #43260F 100%);
+    padding: 34px;
+  }
+
+  .board {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background:
+      radial-gradient(115% 88% at 50% 16%, #232B3A 0%, #161C27 58%, #0D1118 100%);
+    box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.62), inset 0 0 8px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 84px;
+  }
+
+  .board::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    opacity: 0.55;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.045'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .chalk-underline {
+    width: 640px;
+    height: 26px;
+    display: block;
+  }
+
+  .kicker {
+    font-size: 38px;
+    letter-spacing: 6px;
+    color: #B9C2CF;
+    font-weight: 600;
+    margin-bottom: 44px;
+  }
+
+  .kicker b {
+    color: #F5C84C;
+    font-weight: 700;
+  }
+
+  .title {
+    text-align: center;
+    font-size: 92px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: #EFE9DB;
+    text-shadow: 0 0 30px rgba(239, 233, 219, 0.20);
+    letter-spacing: 2px;
+  }
+
+  .title .hl {
+    position: relative;
+    display: inline-block;
+    color: #F5C84C;
+    border: 4px dashed rgba(245, 200, 76, 0.9);
+    border-radius: 22px;
+    padding: 2px 22px;
+    transform: rotate(-1.4deg);
+    margin: 0 8px;
+    text-shadow: 0 0 26px rgba(245, 200, 76, 0.28);
+  }
+
+  .squiggle {
+    margin-top: 30px;
+  }
+
+  .subtitle {
+    margin-top: 34px;
+    font-size: 42px;
+    line-height: 1.6;
+    color: #C6CED8;
+    text-align: center;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  .subtitle em {
+    font-style: normal;
+    color: #B5E5CF;
+  }
+
+  .doodle-row {
+    margin-top: 76px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .doodle-row .star {
+    font-size: 44px;
+    color: #F5C84C;
+    opacity: 0.85;
+    text-shadow: 0 0 18px rgba(245, 200, 76, 0.5);
+  }
+
+  .doodle-row .star.mint {
+    color: #B5E5CF;
+    text-shadow: 0 0 18px rgba(181, 229, 207, 0.5);
+  }
+
+  .doodle-row .star.coral {
+    color: #F08A7E;
+    text-shadow: 0 0 18px rgba(240, 138, 126, 0.5);
+  }
+
+  .mock-card {
+    margin-top: 34px;
+    width: 720px;
+    border: 4px dashed rgba(239, 233, 219, 0.75);
+    border-radius: 28px;
+    padding: 34px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+  }
+
+  .mock-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px 30px;
+    border-radius: 999px;
+    border: 3px solid rgba(245, 200, 76, 0.95);
+    color: #F5C84C;
+    font-size: 32px;
+    font-weight: 700;
+    transform: rotate(-1deg);
+    white-space: nowrap;
+  }
+
+  .mock-arrow {
+    font-size: 34px;
+    color: #C6CED8;
+    font-weight: 700;
+  }
+
+  .mock-cols {
+    display: flex;
+    gap: 22px;
+  }
+
+  .mock-col {
+    border: 3px dashed rgba(181, 229, 207, 0.85);
+    border-radius: 18px;
+    padding: 16px 26px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .mock-col .cap {
+    font-size: 28px;
+    font-weight: 700;
+    color: #B5E5CF;
+    margin-bottom: 6px;
+  }
+
+  .mock-col.warm {
+    border-color: rgba(240, 138, 126, 0.9);
+  }
+
+  .mock-col.warm .cap {
+    color: #F08A7E;
+  }
+
+  .mock-col p {
+    font-size: 26px;
+    color: #D9D2C2;
+  }
+
+  .board-foot {
+    margin-top: 58px;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: rgba(185, 194, 207, 0.55);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+  <section class="cover">
+    <div class="board">
+      <p class="kicker">浏览器插件 · <b>I am Fine</b></p>
+      <h1 class="title">
+        选中<span class="hl">看不懂的词</span><br>
+        不离开页面就懂了
+      </h1>
+      <svg class="squiggle" viewBox="0 0 640 26" fill="none" aria-hidden="true">
+        <path d="M10 14 Q 48 3 86 14 T 162 14 T 238 14 T 314 14 T 390 14 T 466 14 T 542 14 T 618 14"
+          stroke="#F5C84C" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+      </svg>
+      <p class="subtitle">选中即得 <em>专业解释 + 通俗解释</em><br>阅读不再被打断</p>
+      <div class="doodle-row">
+        <span class="star">✦</span>
+        <span class="star mint">✧</span>
+        <span class="star coral">✦</span>
+        <span class="star">✧</span>
+        <span class="star mint">✦</span>
+      </div>
+      <div class="mock-card">
+        <span class="mock-pill">解释这个词</span>
+        <span class="mock-arrow">→</span>
+        <div class="mock-cols">
+          <div class="mock-col">
+            <p class="cap">专业解释</p>
+            <p>准确 · 不绕弯</p>
+          </div>
+          <div class="mock-col warm">
+            <p class="cap">通俗解释</p>
+            <p>一读就懂</p>
+          </div>
+        </div>
+      </div>
+      <p class="board-foot">CHALKBOARD SERIES · 2026.08</p>
+    </div>
+  </section>
+</body>
+</html>

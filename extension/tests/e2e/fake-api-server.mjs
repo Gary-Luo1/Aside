@@ -50,7 +50,15 @@ const PROTECTED_HTML = `<!doctype html>
     <article>
       <p class="protected">加密是把明文转换成密文以保护数据的过程。</p>
       <p class="protected">缓存是临时保存数据以加快后续访问速度的机制。</p>
+      <div class="protected">
+        <button id="protected-action" type="button">受保护按钮</button>
+      </div>
     </article>
+    <script>
+      document.querySelector("#protected-action").addEventListener("click", (event) => {
+        event.currentTarget.dataset.clicked = "true";
+      });
+    </script>
   </body>
 </html>`;
 
@@ -106,6 +114,50 @@ const CAPTURE_STOP_HTML = `<!doctype html>
   </body>
 </html>`;
 
+const FRAME_HTML = `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>嵌入教程帧</title>
+    <style>
+      body { font-family: sans-serif; min-width: 360px; margin: 20px; line-height: 1.8; }
+    </style>
+  </head>
+  <body>
+    <h2>嵌入教程帧</h2>
+    <p>算法是解决某类问题的一组明确步骤。</p>
+    <p>缓存是临时保存数据以加快后续访问速度的机制。</p>
+  </body>
+</html>`;
+
+const NESTED_FRAME_HTML = `<!doctype html>
+<html lang="zh-CN">
+  <head><meta charset="utf-8" /><title>嵌套帧容器</title></head>
+  <body>
+    <h2>嵌套帧容器</h2>
+    <iframe name="nested-inner-frame" id="nested-inner-frame" src="/frame.html" title="嵌套内容"></iframe>
+  </body>
+</html>`;
+
+const FRAMES_HTML = `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>多帧教程页</title>
+    <style>
+      body { font-family: sans-serif; margin: 20px; }
+      iframe { display: block; width: 520px; height: 180px; margin: 12px 0; border: 1px solid #999; }
+    </style>
+  </head>
+  <body>
+    <h1>多帧教程页</h1>
+    <iframe name="same-origin-frame" id="same-origin-frame" src="/frame.html" title="同源帧"></iframe>
+    <iframe name="cross-origin-frame" id="cross-origin-frame" src="http://localhost:8787/frame.html" title="跨源帧"></iframe>
+    <iframe name="nested-frame" id="nested-frame" src="/nested-frame.html" title="嵌套帧"></iframe>
+    <iframe name="data-frame" id="data-frame" src="data:text/html,%3Cp%3E算法%3C%2Fp%3E" title="特殊来源帧"></iframe>
+  </body>
+</html>`;
+
 function json(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(payload));
@@ -151,6 +203,21 @@ const server = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/capture-stop.html") {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(CAPTURE_STOP_HTML);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/frames.html") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(FRAMES_HTML);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/frame.html") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(FRAME_HTML);
+    return;
+  }
+  if (req.method === "GET" && req.url === "/nested-frame.html") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(NESTED_FRAME_HTML);
     return;
   }
 
