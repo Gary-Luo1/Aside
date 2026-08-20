@@ -1,23 +1,29 @@
 :host {
   all: initial;
   z-index: 2147483647;
-  --ink: #17221d;
-  --ink-soft: #2c3a32;
-  --muted: #5d6b63;
-  --line: #dce4de;
-  --line-strong: #c3cfc6;
-  --surface: #fffefa;
-  --paper: #f6f3eb;
-  --accent: #176b4d;
-  --accent-strong: #0e5238;
-  --accent-soft: #e3efe8;
-  --accent-ink: #0b3d2a;
-  --warm: #b25c2b;
-  --danger: #a0382f;
-  --danger-soft: #f7e9e6;
-  --focus: #0f7a56;
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --sans: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --ink: #1a1410;
+  --ink-soft: #3b2f28;
+  --muted: #6d5648;
+  --surface: #fff8e8;
+  --paper: #f3ead4;
+  --field: #fffdf6;
+  --pink: #ff4f86;
+  --orange: #ff8a2a;
+  --yellow: #ffe14a;
+  --green: #2fbf6a;
+  --blue: #2f7de0;
+  --purple: #8a4fe0;
+  --danger: #e23d5b;
+  --danger-soft: #ffd6e0;
+  --focus: #2f7de0;
+  --on-accent: #12301c;
+  --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
+  --hand: "ZCOOL KuaiLe", "Wawati SC", "HanziPen SC", "Yuanti SC", "PingFang SC", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --wax:
+    repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1.4px 5px),
+    repeating-linear-gradient(-28deg, rgba(26, 20, 16, 0.08) 0 1px, transparent 1px 6px);
 }
 
 * {
@@ -28,8 +34,9 @@
 
 button {
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
+  cursor: pointer;
 }
 
 .overlay,
@@ -44,78 +51,115 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* ── 选词入口 ───────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.trigger,
+.hint,
+.card,
+.close,
+.expand,
+.action-button,
+.term {
+  filter: url("#crayon-wobble");
+}
+
 .trigger {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 0 12px;
-  color: #ffffff;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 10px 26px rgba(23, 107, 77, 0.28);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 650;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  min-height: 40px;
+  padding: 2px 18px 4px;
+  color: var(--on-accent);
+  border: 4px solid var(--ink);
+  border-radius: 42% 58% 50% 50% / 48% 40% 60% 52%;
+  background: var(--wax), var(--green);
+  font-family: var(--hand);
+  font-size: 16px;
+  animation: crayon-in 0.28s var(--ease-out);
 }
 
 .trigger:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  box-shadow: 0 12px 30px rgba(23, 107, 77, 0.32);
+  transform: rotate(-2.4deg) scale(1.04);
 }
 
-.trigger:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
+.trigger:active {
+  transform: translate(1px, 2px);
 }
 
-/* ── 选词提示（超长/换行等不可解释选词） ──────────── */
 .hint {
   max-width: min(320px, calc(100vw - 32px));
   padding: 10px 14px;
   color: var(--ink-soft);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
-  background: var(--paper);
-  box-shadow: 0 8px 24px rgba(39, 55, 47, 0.14);
-  font-size: 12.5px;
+  border: 4px solid var(--ink);
+  border-radius: 28px 18px 24px 20px / 20px 26px 16px 24px;
+  background: var(--wax), var(--surface);
+  font-family: var(--hand);
+  font-size: 15px;
   line-height: 1.6;
-  pointer-events: none; /* 提示不拦截页面交互 */
+  pointer-events: none;
+  animation: crayon-in 0.28s var(--ease-out);
 }
 
-/* ── 解释卡片 ───────────────────────────────── */
 .card {
   position: fixed;
   width: clamp(540px, 48vw, 660px);
   max-width: calc(100vw - 32px);
   color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 22px 60px rgba(39, 55, 47, 0.18);
-  font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.6;
-  overflow: hidden;
+  border: 5px solid var(--ink);
+  border-radius: 34px 18px 40px 22px / 22px 36px 16px 32px;
+  background:
+    var(--wax),
+    radial-gradient(circle at 10% 12%, rgba(255, 79, 134, 0.1), transparent 26%),
+    var(--surface);
+  box-shadow: 9px 11px 0 rgba(47, 125, 224, 0.14);
+  font-family: var(--hand);
+  font-size: 15px;
+  line-height: 1.65;
+  animation: crayon-in 0.3s var(--ease-out);
 }
 
 .card-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 18px 13px;
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
+  gap: 6px;
+  padding: 14px 16px 12px;
+  border-bottom: 4px dashed var(--ink);
+  background: var(--wax), var(--paper);
 }
 
 .card-header .kicker {
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  display: inline-flex;
+  font-family: var(--display);
+  font-size: 32px;
+  letter-spacing: 0.02em;
+  line-height: 0.9;
+}
+
+.kicker span:nth-child(1) {
+  color: var(--pink);
+  transform: rotate(-6deg);
+}
+.kicker span:nth-child(2) {
+  color: var(--purple);
+  transform: rotate(4deg);
+}
+.kicker span:nth-child(3) {
+  color: var(--blue);
+  transform: rotate(-3deg);
+}
+.kicker span:nth-child(4) {
+  color: var(--green);
+  transform: rotate(5deg);
+}
+.kicker span:nth-child(5) {
+  color: var(--orange);
+  transform: rotate(-4deg);
 }
 
 .title-row {
@@ -128,21 +172,20 @@ button:focus-visible {
 .card-title {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
   min-width: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .card-title .term {
   display: inline-block;
   max-width: 320px;
-  padding: 2px 10px;
+  padding: 2px 12px 4px;
   overflow: hidden;
-  color: var(--accent-ink);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: var(--surface);
+  color: var(--blue);
+  border: 3px solid var(--ink);
+  border-radius: 16px 22px 14px 20px / 18px 14px 22px 16px;
+  background: var(--wax), #fff;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 650;
@@ -153,35 +196,28 @@ button:focus-visible {
 
 .close {
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--muted);
+  width: 36px;
+  height: 36px;
+  border: 4px solid var(--ink);
+  border-radius: 46% 54%;
+  background: var(--wax), #ffd0dc;
+  color: var(--ink);
   font-size: 20px;
   line-height: 1;
-  cursor: pointer;
 }
 
 .close:hover {
-  background: var(--accent-soft);
-  color: var(--ink);
-}
-
-.close:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 1px;
+  background: var(--wax), var(--pink);
+  color: #fff;
 }
 
 .card-body {
   position: relative;
-  padding: 18px;
+  padding: 16px;
   max-height: min(480px, calc(100vh - 32px));
   overflow-y: auto;
 }
 
-/* ── 双栏对照 ───────────────────────────────── */
 .columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -190,7 +226,7 @@ button:focus-visible {
 
 .col {
   min-width: 0;
-  padding: 0 18px;
+  padding: 0 16px;
 }
 
 .col:first-child {
@@ -199,36 +235,37 @@ button:focus-visible {
 
 .col + .col {
   padding-right: 0;
-  border-left: 1px solid var(--line);
+  border-left: 4px dashed var(--ink);
 }
 
 .col h3 {
   margin-bottom: 10px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 400;
 }
 
 .col h3::after {
   content: "";
   display: block;
-  width: 28px;
-  height: 3px;
-  margin-top: 7px;
-  border-radius: 2px;
+  width: 34px;
+  height: 8px;
+  margin-top: 6px;
+  border: 3px solid var(--ink);
+  border-radius: 40% 60%;
+  background: var(--wax), currentColor;
 }
 
-.col:first-child h3::after {
-  background: var(--accent);
+.col-pro h3 {
+  color: var(--purple);
 }
 
-.col + .col h3::after {
-  background: var(--warm);
+.col-plain h3 {
+  color: var(--green);
 }
 
 .col p {
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
@@ -250,63 +287,66 @@ button:focus-visible {
 
   .col + .col {
     padding-right: 0;
-    padding-top: 14px;
-    margin-top: 14px;
+    padding-top: 16px;
+    margin-top: 16px;
     border-left: 0;
-    border-top: 1px solid var(--line);
+    border-top: 4px dashed var(--ink);
   }
 }
 
 .expand {
   margin-top: 16px;
-  padding: 6px 14px;
-  color: var(--accent);
-  border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  background: transparent;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  min-height: 36px;
+  padding: 6px 16px;
+  color: var(--blue);
+  border: 4px solid var(--ink);
+  border-radius: 40% 60% 50% 50% / 50% 40% 60% 50%;
+  background: var(--wax), #dcebff;
+  font-size: 15px;
 }
 
-.expand:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.expand:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 1px;
-}
-
-/* ── 加载态 ─────────────────────────────────── */
 .loading-body {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 64px;
-  color: var(--muted);
-  font-size: 14px;
+  display: grid;
 }
 
-.spinner {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  border: 2.5px solid var(--line);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: i-am-fine-spin 0.8s linear infinite;
+.skeleton-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-@keyframes i-am-fine-spin {
-  to {
-    transform: rotate(360deg);
+.skeleton-col {
+  display: grid;
+  gap: 8px;
+}
+
+.skel {
+  display: block;
+  height: 12px;
+  border: 3px solid var(--ink);
+  border-radius: 40% 60%;
+  background: var(--wax), #ffe9c4;
+}
+
+.skel-title {
+  width: 72px;
+  height: 10px;
+}
+
+.skel-line {
+  height: 10px;
+}
+
+.skel-line.short {
+  width: 62%;
+}
+
+@media (max-width: 719px) {
+  .skeleton-cols {
+    grid-template-columns: 1fr;
   }
 }
 
-/* ── 错误态 ─────────────────────────────────── */
 .error-body {
   display: flex;
   flex-direction: column;
@@ -315,68 +355,57 @@ button:focus-visible {
 
 .error-message {
   margin: 0;
-  padding-left: 12px;
+  padding: 10px 12px;
   color: var(--danger);
-  border-left: 3px solid var(--danger);
-  font-size: 14px;
+  border: 4px dashed var(--danger);
+  border-radius: 18px 24px 16px 22px / 20px 16px 24px 18px;
+  background: var(--wax), var(--danger-soft);
+  font-size: 15px;
   line-height: 1.65;
 }
 
 .error-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .action-button {
+  min-height: 40px;
   padding: 8px 16px;
   color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.action-button:hover {
-  background: var(--paper);
-  border-color: var(--accent);
+  border: 4px solid var(--ink);
+  border-radius: 40% 60% 50% 50% / 48% 40% 60% 52%;
+  background: var(--wax), #fff;
 }
 
 .action-button.primary {
-  color: #ffffff;
-  border-color: var(--accent);
-  background: var(--accent);
-  font-weight: 700;
+  color: var(--on-accent);
+  background: var(--wax), var(--green);
 }
 
-.action-button.primary:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-}
-
-.action-button:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 1px;
-}
-
-/* ── 页脚隐私行 ─────────────────────────────── */
 .card-footer {
-  padding: 11px 18px 12px;
-  border-top: 1px solid var(--line);
-  background: var(--paper);
+  padding: 10px 16px;
+  border-top: 4px dashed var(--ink);
+  background: var(--wax), var(--paper);
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.8;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .card-footer p {
   margin: 0;
 }
 
-.card-footer p + p {
-  margin-top: 2px;
+@keyframes crayon-in {
+  from {
+    opacity: 0;
+    transform: rotate(-2.5deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

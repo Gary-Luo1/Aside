@@ -6,6 +6,8 @@ describe("prompt", () => {
     expect(SYSTEM_PROMPT).toContain("professional");
     expect(SYSTEM_PROMPT).toContain("plain");
     expect(SYSTEM_PROMPT).toContain("只返回一个 JSON 对象");
+    expect(SYSTEM_PROMPT).toContain("两栏必须解释同一义项");
+    expect(SYSTEM_PROMPT).not.toContain('"professional": "专业解释"');
   });
 
   it("用户提示只包含被选中的名词", () => {

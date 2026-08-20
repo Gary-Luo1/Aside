@@ -4,10 +4,7 @@ import {
   isConfigTestResult,
   isExplainResult,
   isExplainTermRequest,
-  isUiSettingsRequest,
-  isUiSettingsResponse,
   requestExplainTerm,
-  requestUiSettings,
 } from "../../src/shared/messages";
 
 describe("载荷守卫", () => {
@@ -33,12 +30,6 @@ describe("载荷守卫", () => {
     expect(isConfigTestRequest({ type: "CONFIG_TEST_REQUEST" })).toBe(false);
     expect(isConfigTestRequest({ type: "CONFIG_TEST_REQUEST", config: "x" })).toBe(false);
   });
-
-  it("isUiSettingsRequest 只认类型", () => {
-    expect(isUiSettingsRequest({ type: "GET_UI_SETTINGS_REQUEST" })).toBe(true);
-    expect(isUiSettingsRequest({ type: "GET_UI_SETTINGS_REQUEST", extra: 1 })).toBe(true);
-    expect(isUiSettingsRequest({ type: "EXPLAIN_TERM_REQUEST" })).toBe(false);
-  });
 });
 
 describe("响应守卫", () => {
@@ -58,33 +49,16 @@ describe("响应守卫", () => {
     expect(isExplainResult({ ok: false, error: "oops" })).toBe(false);
   });
 
-  it("isConfigTestResult 与 isUiSettingsResponse 形状正确", () => {
+  it("isConfigTestResult 形状正确", () => {
     expect(isConfigTestResult({ ok: true })).toBe(true);
     expect(isConfigTestResult({ ok: false, error: { code: "auth", message: "拒绝" } })).toBe(true);
     expect(isConfigTestResult({ ok: true, extra: 1 })).toBe(true);
-    expect(isUiSettingsResponse({ ok: true, restoreSelection: true })).toBe(true);
-    expect(isUiSettingsResponse({ ok: true })).toBe(false);
-    expect(isUiSettingsResponse({ restoreSelection: true })).toBe(false);
   });
 });
 
 describe("助手函数兜底", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-  });
-
-  it("requestUiSettings 收到合法回包时透传", async () => {
-    vi.stubGlobal("chrome", {
-      runtime: { sendMessage: vi.fn(async () => ({ ok: true, restoreSelection: true })) },
-    });
-    expect(await requestUiSettings()).toEqual({ restoreSelection: true });
-  });
-
-  it("requestUiSettings 收到坏回包时回退 restoreSelection:false", async () => {
-    vi.stubGlobal("chrome", {
-      runtime: { sendMessage: vi.fn(async () => ({ ok: true })) },
-    });
-    expect(await requestUiSettings()).toEqual({ restoreSelection: false });
   });
 
   it("requestExplainTerm 收到 undefined 时返回 unexpected 错误", async () => {

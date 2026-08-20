@@ -7,7 +7,6 @@ const form = document.querySelector<HTMLFormElement>("#config-form")!;
 const baseUrlInput = document.querySelector<HTMLInputElement>("#base-url")!;
 const apiKeyInput = document.querySelector<HTMLInputElement>("#api-key")!;
 const modelInput = document.querySelector<HTMLInputElement>("#model")!;
-const restoreSelectionInput = document.querySelector<HTMLInputElement>("#restore-selection")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
 const testButton = document.querySelector<HTMLButtonElement>("#test-connection")!;
 const saveButton = document.querySelector<HTMLButtonElement>("#save")!;
@@ -15,18 +14,14 @@ const deleteButton = document.querySelector<HTMLButtonElement>("#delete-config")
 const toggleKeyButton = document.querySelector<HTMLButtonElement>("#toggle-key")!;
 
 let saveEligibleConfig: AiConfig | null = null;
-let persistedRestoreSelection = false;
 
 async function init(): Promise<void> {
   const result = await loadConfig();
   if (result.ok) {
-    // 已保存配置已经通过保存前的完整校验；仅修改 UI 开关时不需要再次请求接口。
     saveEligibleConfig = result.config;
-    persistedRestoreSelection = result.config.restoreSelection === true;
     baseUrlInput.value = result.config.baseUrl;
     apiKeyInput.value = result.config.apiKey;
     modelInput.value = result.config.model;
-    restoreSelectionInput.checked = result.config.restoreSelection === true;
     deleteButton.hidden = false;
     setStatus("已保存配置。修改 Base URL、API Key 或 Model 后需要重新测试连接。", "info");
   } else if (result.reason === "invalid") {
@@ -44,7 +39,6 @@ function currentConfig(): AiConfig {
     baseUrl: baseUrlInput.value.trim(),
     apiKey: apiKeyInput.value,
     model: modelInput.value.trim(),
-    restoreSelection: restoreSelectionInput.checked,
   };
 }
 
@@ -104,17 +98,9 @@ async function handleSave(event: Event): Promise<void> {
     setStatus(validation.message, "error");
     return;
   }
-  // 首次保存时也以默认关闭为基准，启用后让已打开页面刷新以重新读取设置。
-  const refreshRequired = persistedRestoreSelection !== validation.config.restoreSelection;
   await saveConfig(validation.config);
-  persistedRestoreSelection = validation.config.restoreSelection === true;
   deleteButton.hidden = false;
-  setStatus(
-    refreshRequired
-      ? "配置已保存。请刷新已打开的网页，新的划词设置才会生效。"
-      : "配置已保存。",
-    "ok",
-  );
+  setStatus("配置已保存。", "ok");
 }
 
 async function handleDelete(): Promise<void> {
@@ -122,9 +108,7 @@ async function handleDelete(): Promise<void> {
   baseUrlInput.value = "";
   apiKeyInput.value = "";
   modelInput.value = "";
-  restoreSelectionInput.checked = false;
   saveEligibleConfig = null;
-  persistedRestoreSelection = false;
   deleteButton.hidden = true;
   refreshSaveAvailability();
   setStatus("已删除 API Base URL、API Key 和 Model，本地配置已清空。", "info");
@@ -148,7 +132,5 @@ toggleKeyButton.addEventListener("click", handleToggleKey);
 for (const input of [baseUrlInput, apiKeyInput, modelInput]) {
   input.addEventListener("input", handleFieldChange);
 }
-// 开关不涉及接口参数，切换后无需重新测试连接。
-restoreSelectionInput.addEventListener("change", () => refreshSaveAvailability());
 
 void init();

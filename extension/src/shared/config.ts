@@ -65,7 +65,7 @@ export function validateConfig(raw: unknown): ConfigValidationResult {
       baseUrl,
       apiKey,
       model,
-      restoreSelection: value.restoreSelection === true,
+      restoreSelection: true,
     },
   };
 }

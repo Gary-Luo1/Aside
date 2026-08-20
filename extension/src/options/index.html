@@ -3,17 +3,77 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>I am Fine 设置</title>
+    <title>Aside 设置</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
+    <svg class="crayon-filters" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="crayon-wobble" x="-12%" y="-12%" width="124%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="3" seed="8" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="6.5" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+        <filter id="crayon-sketch" x="-18%" y="-18%" width="136%" height="136%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="4" seed="2" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="11" xChannelSelector="R" yChannelSelector="B" />
+        </filter>
+        <filter id="crayon-wax" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" seed="14" result="grain" />
+          <feColorMatrix in="grain" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.55 0" result="g" />
+          <feComposite in="SourceGraphic" in2="g" operator="in" />
+        </filter>
+      </defs>
+    </svg>
+    <div class="paper-grain" aria-hidden="true"></div>
+
+    <svg class="doodle sun" viewBox="0 0 120 120" aria-hidden="true">
+      <path fill="#f4b942" d="M58 28c18-2 32 12 30 28-2 18-18 30-34 28-16-1-28-16-26-32 2-14 14-23 30-24z" />
+      <path fill="#ffe36b" d="M62 38c10 0 18 8 17 17-1 10-9 16-18 16s-16-8-15-17c1-8 7-16 16-16z" />
+      <path fill="none" stroke="#e38b2a" stroke-width="6" stroke-linecap="round" d="M60 8c1 8 1 12 0 18M88 16l-10 14M108 48l-16 4M96 86l-14-8M62 112l-1-16M28 98l10-12M8 58l18-2M24 22l12 12" />
+      <circle cx="52" cy="54" r="3.2" fill="#1a1410" />
+      <circle cx="72" cy="52" r="3.4" fill="#1a1410" />
+      <path fill="none" stroke="#1a1410" stroke-width="3" stroke-linecap="round" d="M50 68c5 8 16 9 24-1" />
+    </svg>
+    <svg class="doodle cloud" viewBox="0 0 90 46" aria-hidden="true">
+      <path fill="#8ec9ff" stroke="#1a1410" stroke-width="3" d="M22 32c-8 0-14-6-12-14 2-7 10-10 16-7 2-8 14-12 22-6 8-6 22-2 24 8 8-1 16 8 12 16-10 8-42 10-62 3z" />
+    </svg>
+    <svg class="doodle star-a" viewBox="0 0 28 28" aria-hidden="true">
+      <path fill="#4aa3e8" stroke="#1a1410" stroke-width="2" d="M14 2 17 11h9l-7 6 3 9-8-5-8 5 3-9-7-6h9z" />
+    </svg>
+    <svg class="doodle star-b" viewBox="0 0 22 22" aria-hidden="true">
+      <path fill="#ffd24a" stroke="#1a1410" stroke-width="2" d="M11 1 13 8h8l-6 5 2 8-6-4-6 4 2-8-6-5h8z" />
+    </svg>
+    <svg class="doodle heart" viewBox="0 0 26 24" aria-hidden="true">
+      <path fill="#ff5d8f" stroke="#1a1410" stroke-width="2.2" d="M13 21S3 14.2 3 8.4C3 4.8 6 2.6 9 3.2c1.6.4 2.8 1.6 4 3 1.2-1.4 2.5-2.6 4.2-3C20.4 2.5 23.4 4.8 23.4 8.6 23.4 14.4 13 21 13 21z" />
+    </svg>
+    <svg class="doodle castle" viewBox="0 0 90 86" aria-hidden="true">
+      <path fill="#ff8fb8" stroke="#1a1410" stroke-width="3" d="M12 80 18 38h10l4-18 8 8 8-16 8 16 8-8 4 18h10L84 80z" />
+      <path fill="#ffd1e3" stroke="#1a1410" stroke-width="2.5" d="M34 80V52h22v28" />
+      <path fill="#5b3a2e" d="M42 80v-16h8v16" />
+      <circle cx="45" cy="58" r="3" fill="#ffe9a8" />
+    </svg>
+    <svg class="doodle candy" viewBox="0 0 36 70" aria-hidden="true">
+      <path fill="none" stroke="#c9a227" stroke-width="4" d="M18 68V28" />
+      <circle cx="18" cy="20" r="16" fill="#ff5d8f" stroke="#1a1410" stroke-width="3" />
+      <path fill="#ffe36b" d="M18 6c8 4 12 10 12 16 0-1-18-8-18-16 4-2 6 0 6 0z" />
+    </svg>
+    <svg class="doodle rainbow" viewBox="0 0 240 130" aria-hidden="true">
+      <path fill="none" stroke="#ff5d8f" stroke-width="12" stroke-linecap="round" d="M12 118c18-82 198-86 216-6" />
+      <path fill="none" stroke="#ff9f43" stroke-width="12" stroke-linecap="round" d="M26 118c16-66 174-70 190-4" />
+      <path fill="none" stroke="#ffe36b" stroke-width="12" stroke-linecap="round" d="M40 118c14-50 150-54 164-4" />
+      <path fill="none" stroke="#3db87a" stroke-width="12" stroke-linecap="round" d="M54 118c12-36 126-38 138-4" />
+      <path fill="none" stroke="#4aa3e8" stroke-width="12" stroke-linecap="round" d="M68 118c10-22 100-24 110-2" />
+      <path fill="#fff7e8" stroke="#1a1410" stroke-width="3" d="M198 108c8-16 36-14 40 4 10 2 16 16 4 22-28 8-52 2-48-12 2-8 4-12 4-14z" />
+    </svg>
+
     <main class="page">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true">◈</span>
           <div class="brand-name">
-            <strong>I AM FINE</strong>
-            <small>术语解释助手</small>
+            <strong class="wordmark" aria-label="aside">
+              <span>a</span><span>s</span><span>i</span><span>d</span><span>e</span>
+            </strong>
+            <small>已经在你电脑上的旁注</small>
           </div>
         </div>
         <div class="conn-state" aria-hidden="true">
@@ -23,91 +83,67 @@
       </header>
 
       <section class="panel" aria-labelledby="config-title">
-        <div class="panel-head">
-          <p class="kicker">设置</p>
-          <h1 id="config-title">接口设置</h1>
-          <p class="intro">
-            配置你的 OpenAI 兼容接口。配置只保存在当前浏览器本地，请求直接发往你填写的接口地址。
-          </p>
-        </div>
-
-        <form id="config-form" novalidate>
-          <div class="field">
-            <label for="base-url">API Base URL</label>
-            <input
-              id="base-url"
-              name="baseUrl"
-              type="url"
-              required
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="https://api.example.com/v1"
-            />
-            <p class="hint">以 https 开头；本地调试可用 http://localhost 或 http://127.0.0.1。</p>
+        <div class="panel-skin" aria-hidden="true"></div>
+        <div class="panel-inner">
+          <div class="panel-head">
+            <p class="kicker">配置</p>
+            <h1 id="config-title">接口</h1>
+            <p class="intro">解释会出现在你划出的词旁边。请求直接发往你填写的地址。</p>
           </div>
 
-          <div class="field">
-            <label for="api-key">API Key</label>
-            <div class="key-row">
+          <form id="config-form" novalidate>
+            <div class="field">
+              <label for="base-url">API Base URL</label>
               <input
-                id="api-key"
-                name="apiKey"
-                type="password"
+                id="base-url"
+                name="baseUrl"
+                type="url"
                 required
                 autocomplete="off"
                 spellcheck="false"
+                placeholder="https://api.example.com/v1"
               />
-              <button type="button" id="toggle-key" class="secondary">显示</button>
             </div>
-            <p class="hint">本地保存不等于操作系统级加密，建议使用独立、可撤销、有限额的密钥。</p>
-          </div>
 
-          <div class="field">
-            <label for="model">Model</label>
-            <input
-              id="model"
-              name="model"
-              type="text"
-              required
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="model-name"
-            />
-          </div>
+            <div class="field">
+              <label for="api-key">API Key</label>
+              <div class="key-row">
+                <input
+                  id="api-key"
+                  name="apiKey"
+                  type="password"
+                  required
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="button" id="toggle-key" class="secondary">显示</button>
+              </div>
+            </div>
 
-          <div class="field">
-            <label class="checkbox-row" for="restore-selection">
-              <input id="restore-selection" name="restoreSelection" type="checkbox" />
-              <span>在不允许选择的网页上恢复划词选择</span>
-            </label>
-            <p class="hint">
-              部分网页（如开启防复制的飞书文档）会禁止选中文字，导致无法划词解释。
-              开启后，扩展只在你尝试划选文字时恢复该区域的选择能力；仍只发送你选中的短文本，
-              不会复制或发送未选中内容。修改后刷新已打开的页面生效。
-            </p>
-          </div>
+            <div class="field">
+              <label for="model">Model</label>
+              <input
+                id="model"
+                name="model"
+                type="text"
+                required
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="model-name"
+              />
+            </div>
 
-          <p id="status" role="status" aria-live="polite" class="status"></p>
+            <p id="status" role="status" aria-live="polite" class="status"></p>
 
-          <div class="actions">
-            <button type="button" id="test-connection">测试连接</button>
-            <button type="submit" id="save" disabled>保存配置</button>
-            <button type="button" id="delete-config" class="danger" hidden>删除配置</button>
-          </div>
-        </form>
-      </section>
+            <div class="actions">
+              <button type="button" id="test-connection">测试连接</button>
+              <button type="submit" id="save" disabled>保存配置</button>
+              <button type="button" id="delete-config" class="danger" hidden>删除配置</button>
+            </div>
+          </form>
 
-      <section class="panel" aria-labelledby="privacy-title">
-        <div class="panel-head">
-          <p class="kicker">隐私</p>
-          <h2 id="privacy-title">隐私说明</h2>
+          <p class="privacy-note">API Key 只保存在当前浏览器本地，查询时只发送你选中的文本。</p>
         </div>
-        <ul class="privacy-list">
-          <li>插件只发送你主动选中的文本，不读取所在段落、页面标题或网址。</li>
-          <li>请求直接发往你填写的 API Base URL，由对应模型厂商处理。</li>
-          <li>插件不保存查询历史；API Key 仅存于当前浏览器本地。</li>
-          <li>删除配置会同时移除 API Base URL、API Key 和 Model 三个字段。</li>
-        </ul>
       </section>
     </main>
     <script src="options.js"></script>

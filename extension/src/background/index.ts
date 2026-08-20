@@ -3,7 +3,6 @@ import {
   isExplainTermRequest,
   isOptionsPageSender,
   isPageSender,
-  isUiSettingsRequest,
   type ExtensionError,
 } from "../shared/messages";
 import { sanitizeTerm } from "../shared/term";
@@ -60,16 +59,6 @@ async function handleMessage(message: unknown, sender: chrome.runtime.MessageSen
       };
     }
     return coordinator.explain(term, sender.tab?.id, sender.frameId);
-  }
-
-  if (isUiSettingsRequest(message)) {
-    if (!isPageSender(sender)) return undefined;
-    const configResult = await loadConfig();
-    // 只返回内容脚本所需的 UI 设置，不携带 API Key / Base URL / Model。
-    return {
-      ok: true,
-      restoreSelection: configResult.ok ? configResult.config.restoreSelection === true : false,
-    };
   }
 
   return undefined;

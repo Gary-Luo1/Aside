@@ -3,10 +3,7 @@ export interface AiConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
-  /**
-   * 是否在禁止选择的网页（如开启防复制的飞书文档）上恢复划词选择。
-   * 默认 false；该设置不参与任何 API 请求。
-   */
+  /** 兼容旧配置中的字段；运行时始终恢复划词，不再作为开关使用。 */
   restoreSelection?: boolean;
 }
 
@@ -41,14 +38,12 @@ export interface ExtensionError {
 export const MESSAGE_TYPES = {
   CONFIG_TEST_REQUEST: "CONFIG_TEST_REQUEST",
   EXPLAIN_TERM_REQUEST: "EXPLAIN_TERM_REQUEST",
-  GET_UI_SETTINGS_REQUEST: "GET_UI_SETTINGS_REQUEST",
 } as const;
 
 /** content/options → 后台 的请求；载荷在后台可信边界重新校验。 */
 export type RuntimeRequest =
   | { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig }
-  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string }
-  | { type: typeof MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST };
+  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string };
 
 /** 后台对解释请求的稳定响应。 */
 export type ExplainResult =
@@ -57,17 +52,6 @@ export type ExplainResult =
 
 /** 后台对连接测试请求的稳定响应。 */
 export type ConfigTestResult = { ok: true } | { ok: false; error: ExtensionError };
-
-/** GET_UI_SETTINGS_REQUEST 的真实回包形状。 */
-export interface UiSettingsResponse {
-  ok: true;
-  restoreSelection: boolean;
-}
-
-/** 内容脚本可读的 UI 设置；绝不携带 API Key 等敏感配置。 */
-export interface UiSettings {
-  restoreSelection: boolean;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -85,12 +69,6 @@ export function isConfigTestRequest(
   value: unknown,
 ): value is { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig } {
   return isRecord(value) && value.type === MESSAGE_TYPES.CONFIG_TEST_REQUEST && isRecord(value.config);
-}
-
-export function isUiSettingsRequest(
-  value: unknown,
-): value is { type: typeof MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST } {
-  return isRecord(value) && value.type === MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST;
 }
 
 // —— 响应守卫：助手函数校验真实回包形状，不再靠强转 ——
@@ -114,10 +92,6 @@ export function isConfigTestResult(value: unknown): value is ConfigTestResult {
   return value.ok === false && isExtensionError(value.error);
 }
 
-export function isUiSettingsResponse(value: unknown): value is UiSettingsResponse {
-  return isRecord(value) && value.ok === true && typeof value.restoreSelection === "boolean";
-}
-
 function isExtensionError(value: unknown): value is ExtensionError {
   return isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
 }
@@ -139,13 +113,6 @@ export async function requestExplainTerm(term: string): Promise<ExplainResult> {
 export async function requestConfigTest(config: AiConfig): Promise<ConfigTestResult> {
   const response = await send({ type: MESSAGE_TYPES.CONFIG_TEST_REQUEST, config });
   return isConfigTestResult(response) ? response : { ok: false, error: unexpected() };
-}
-
-export async function requestUiSettings(): Promise<UiSettings> {
-  const response = await send({ type: MESSAGE_TYPES.GET_UI_SETTINGS_REQUEST });
-  return isUiSettingsResponse(response)
-    ? { restoreSelection: response.restoreSelection }
-    : { restoreSelection: false };
 }
 
 // —— 发送方授权规则：与契约同住 ——

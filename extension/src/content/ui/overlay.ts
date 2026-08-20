@@ -39,8 +39,17 @@ export class ExplanationOverlay implements OverlayApi {
       "all:initial; position:fixed; left:0; top:0; width:0; height:0; z-index:2147483647;";
     this.shadowRoot = this.host.attachShadow({ mode: "open" });
     const style = document.createElement("style");
-    style.textContent = styles;
+    const gochiUrl = chrome.runtime.getURL("public/fonts/gochi-hand.woff2");
+    style.textContent = `@font-face{font-family:"Gochi Hand";font-style:normal;font-weight:400;font-display:swap;src:url("${gochiUrl}") format("woff2");}${styles}`;
     this.shadowRoot.appendChild(style);
+    const filters = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    filters.setAttribute("aria-hidden", "true");
+    filters.setAttribute("focusable", "false");
+    filters.setAttribute("width", "0");
+    filters.setAttribute("height", "0");
+    filters.innerHTML =
+      '<defs><filter id="crayon-wobble" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="3" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6.5" xChannelSelector="R" yChannelSelector="G"/></filter></defs>';
+    this.shadowRoot.appendChild(filters);
     (document.body ?? document.documentElement).appendChild(this.host);
 
     // 页面（如重型 SPA）重渲染时可能移出宿主节点；被移出则重新挂载，
@@ -125,12 +134,14 @@ export class ExplanationOverlay implements OverlayApi {
     const card = this.createCardShell(data.term, data.onClose);
     const body = document.createElement("div");
     body.className = "loading-body";
-    const spinner = document.createElement("span");
-    spinner.className = "spinner";
-    spinner.setAttribute("aria-hidden", "true");
-    const text = document.createElement("span");
-    text.textContent = "正在解释…";
-    body.append(spinner, text);
+    const status = document.createElement("span");
+    status.className = "sr-only";
+    status.textContent = "正在解释…";
+    const skeleton = document.createElement("div");
+    skeleton.className = "skeleton-cols";
+    skeleton.setAttribute("aria-hidden", "true");
+    skeleton.append(this.createSkeletonColumn(), this.createSkeletonColumn());
+    body.append(status, skeleton);
     card.querySelector(".card-body")!.append(body);
     this.finalize(card, data);
   }
@@ -141,8 +152,8 @@ export class ExplanationOverlay implements OverlayApi {
     const columns = document.createElement("div");
     columns.className = "columns";
 
-    const professional = this.createColumn("专业解释", data.explanation?.professional ?? "");
-    const plain = this.createColumn("通俗解释", data.explanation?.plain ?? "");
+    const professional = this.createColumn("专业解释", data.explanation?.professional ?? "", "pro");
+    const plain = this.createColumn("通俗解释", data.explanation?.plain ?? "", "plain");
     columns.append(professional, plain);
     body.appendChild(columns);
 
@@ -218,7 +229,12 @@ export class ExplanationOverlay implements OverlayApi {
 
     const kicker = document.createElement("span");
     kicker.className = "kicker";
-    kicker.textContent = "I am Fine";
+    kicker.setAttribute("aria-label", "aside");
+    for (const letter of "aside") {
+      const span = document.createElement("span");
+      span.textContent = letter;
+      kicker.appendChild(span);
+    }
 
     const titleRow = document.createElement("div");
     titleRow.className = "title-row";
@@ -228,7 +244,6 @@ export class ExplanationOverlay implements OverlayApi {
     termSpan.className = "term";
     termSpan.textContent = `“${term}”`;
     title.appendChild(termSpan);
-    title.appendChild(document.createTextNode("术语解释"));
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.className = "close";
@@ -243,24 +258,33 @@ export class ExplanationOverlay implements OverlayApi {
 
     const footer = document.createElement("footer");
     footer.className = "card-footer";
-    const privacy = document.createElement("p");
-    privacy.textContent = `本次只使用了“${term}”`;
     const caveat = document.createElement("p");
     caveat.textContent = "AI 生成内容可能不准确，重要信息请进一步核对。";
-    footer.append(privacy, caveat);
+    footer.append(caveat);
 
     card.append(header, body, footer);
     return card;
   }
 
-  private createColumn(titleText: string, content: string): HTMLElement {
+  private createColumn(titleText: string, content: string, channel: "pro" | "plain"): HTMLElement {
     const column = document.createElement("section");
-    column.className = "col";
+    column.className = channel === "plain" ? "col col-plain" : "col col-pro";
     const heading = document.createElement("h3");
     heading.textContent = titleText;
     const text = document.createElement("p");
     text.textContent = content; // 纯文本渲染，不执行 HTML/脚本
     column.append(heading, text);
+    return column;
+  }
+
+  private createSkeletonColumn(): HTMLElement {
+    const column = document.createElement("div");
+    column.className = "skeleton-col";
+    for (const cls of ["skel-title", "skel-line", "skel-line", "skel-line short"]) {
+      const bar = document.createElement("span");
+      bar.className = `skel ${cls}`;
+      column.appendChild(bar);
+    }
     return column;
   }
 

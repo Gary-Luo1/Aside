@@ -2,7 +2,7 @@
   "name": "i-am-fine-prototype",
   "private": true,
   "scripts": {
-    "prototype": "python3 -m http.server 4173 --directory prototype",
+    "prototype": "python3 -m http.server 4173 --bind 127.0.0.1 --directory .",
     "extension:typecheck": "tsc -p extension/tsconfig.json --noEmit",
     "extension:build": "node extension/scripts/build.mjs",
     "extension:test": "vitest run --config extension/vitest.config.ts",

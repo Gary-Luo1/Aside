@@ -1,18 +1,16 @@
 import { expect } from "@playwright/test";
-import {
-  FAKE_API_BASE,
-  configureAndSave,
-  lastFakeApiRequest,
-  openOptionsPage,
-  resetFakeApi,
-  test,
-} from "./helpers";
+import { FAKE_API_BASE, openOptionsPage, test } from "./helpers";
 
 test.describe("设置页", () => {
   test("初始状态：保存禁用、删除隐藏", async ({ extension }) => {
     const page = await openOptionsPage(extension.context, extension.extensionId);
     await expect(page.locator("#save")).toBeDisabled();
     await expect(page.locator("#delete-config")).toBeHidden();
+    await expect(page.locator("#restore-selection")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "隐私说明" })).toHaveCount(0);
+    await expect(page.locator(".privacy-note")).toHaveText(
+      "API Key 只保存在当前浏览器本地，查询时只发送你选中的文本。",
+    );
   });
 
   test("完整配置流程：测试成功→保存→修改后重新禁用→删除", async ({ extension }) => {
@@ -69,55 +67,5 @@ test.describe("设置页", () => {
     await page.locator("#test-connection").click();
     await expect(page.locator("#status")).toContainText("Base URL 无效");
     await expect(page.locator("#save")).toBeDisabled();
-  });
-
-  test("恢复划词开关可勾选、随配置保存并随删除重置", async ({ extension }) => {
-    const page = await openOptionsPage(extension.context, extension.extensionId);
-    await expect(page.locator("#restore-selection")).not.toBeChecked();
-
-    await page.locator("#base-url").fill(`${FAKE_API_BASE}/v1`);
-    await page.locator("#api-key").fill("sk-e2e");
-    await page.locator("#model").fill("fake-model");
-    await page.locator("#restore-selection").check();
-    await page.locator("#test-connection").click();
-    await expect(page.locator("#status")).toContainText("连接测试成功");
-    await page.locator("#save").click();
-    await expect(page.locator("#status")).toContainText("请刷新已打开的网页");
-    await page.close();
-
-    const reopened = await openOptionsPage(extension.context, extension.extensionId);
-    await expect(reopened.locator("#restore-selection")).toBeChecked();
-
-    await reopened.locator("#delete-config").click();
-    await expect(reopened.locator("#status")).toContainText("已删除");
-    await expect(reopened.locator("#restore-selection")).not.toBeChecked();
-  });
-
-  test("已保存配置只切换恢复划词时无需重新测试连接", async ({ extension }) => {
-    await configureAndSave(extension.context, extension.extensionId);
-    const reopened = await openOptionsPage(extension.context, extension.extensionId);
-    await expect(reopened.locator("#status")).toContainText("Base URL、API Key 或 Model");
-    await resetFakeApi();
-
-    await reopened.locator("#restore-selection").check();
-    await expect(reopened.locator("#save")).toBeEnabled();
-    await reopened.locator("#save").click();
-    await expect(reopened.locator("#status")).toContainText("请刷新已打开的网页");
-
-    const { requestCount } = await lastFakeApiRequest();
-    expect(requestCount).toBe(0);
-    await reopened.close();
-
-    const verified = await openOptionsPage(extension.context, extension.extensionId);
-    await expect(verified.locator("#restore-selection")).toBeChecked();
-
-    await verified.locator("#restore-selection").uncheck();
-    await expect(verified.locator("#save")).toBeEnabled();
-    await verified.locator("#save").click();
-    await expect(verified.locator("#status")).toContainText("请刷新已打开的网页");
-    await verified.close();
-
-    const disabled = await openOptionsPage(extension.context, extension.extensionId);
-    await expect(disabled.locator("#restore-selection")).not.toBeChecked();
   });
 });

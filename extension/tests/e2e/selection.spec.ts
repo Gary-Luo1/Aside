@@ -31,7 +31,6 @@ test.describe("选词解释流程", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("专业解释");
     await expect(dialog).toContainText("通俗解释");
-    await expect(dialog).toContainText("本次只使用了“算法”");
     await expect(dialog).toContainText("AI 生成内容可能不准确");
 
     const { lastRequest } = await lastFakeApiRequest();
@@ -108,7 +107,7 @@ test.describe("选词解释流程", () => {
     await expect(trigger).toBeVisible();
     await trigger.focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toContainText("本次只使用了“算法”");
+    await expect(page.getByRole("dialog")).toContainText("专业解释");
   });
 
   test("入口可见时页面复制事件仍可收到选区", async ({ extension }) => {
@@ -267,7 +266,7 @@ test.describe("选词解释流程", () => {
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(`本次只使用了“${phrase}”`);
+    await expect(dialog).toContainText("专业解释");
 
     const { lastRequest } = await lastFakeApiRequest();
     const messages = lastRequest?.messages as Array<{ role: string; content: string }> | undefined;
@@ -286,7 +285,7 @@ test.describe("选词解释流程", () => {
     const trigger = page.getByRole("button", { name: "解释这个词" });
     await expect(trigger).toBeVisible();
     await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`本次只使用了“算法”`);
+    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
   });
 
   test("跨段落拖选（含换行）松手后显示短名词提示而不显示入口", async ({ extension }) => {
@@ -336,22 +335,8 @@ test.describe("选词解释流程", () => {
     await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
   });
 
-  test("受保护页面（禁止选择）：默认关闭恢复划词时无法选中解释", async ({ extension }) => {
+  test("受保护页面：禁止选择时仍可划词并解释", async ({ extension }) => {
     await configureAndSave(extension.context, extension.extensionId);
-    const page = await extension.context.newPage();
-    await page.goto(`${FAKE_API_BASE}/protected.html`);
-    await expect(page.locator("h1")).toContainText("受保护教程页");
-
-    await dragSelectText(page, "加密是把明文转换成密文以保护数据的过程。");
-    const finalSel = await page.evaluate(() => window.getSelection()?.toString() ?? "");
-    expect(finalSel).toBe("");
-    await expect(page.getByRole("button", { name: "解释这个词" })).toHaveCount(0);
-  });
-
-  test("受保护页面：开启恢复划词后可以选中并解释", async ({ extension }) => {
-    await configureAndSave(extension.context, extension.extensionId, {
-      restoreSelection: true,
-    });
     const page = await extension.context.newPage();
     await page.goto(`${FAKE_API_BASE}/protected.html`);
     await expect(page.locator("h1")).toContainText("受保护教程页");
@@ -363,7 +348,7 @@ test.describe("选词解释流程", () => {
     const trigger = page.getByRole("button", { name: "解释这个词" });
     await expect(trigger).toBeVisible();
     await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`本次只使用了“加密”`);
+    await expect(page.getByRole("dialog")).toContainText("专业解释");
   });
 
   test("点击入口时页面清空选区（飞书编辑器行为）仍能触发解释", async ({ extension }) => {
@@ -376,7 +361,7 @@ test.describe("选词解释流程", () => {
     const trigger = page.getByRole("button", { name: "解释这个词" });
     await expect(trigger).toBeVisible();
     await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`本次只使用了“算法”`);
+    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
   });
 
   test("页面在 document 捕获阶段拦截点击仍能触发解释", async ({ extension }) => {
@@ -389,7 +374,7 @@ test.describe("选词解释流程", () => {
     const trigger = page.getByRole("button", { name: "解释这个词" });
     await expect(trigger).toBeVisible();
     await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`本次只使用了“算法”`);
+    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
   });
 
   test("页面移除宿主节点后入口自动恢复挂载并可点击", async ({ extension }) => {
@@ -403,7 +388,7 @@ test.describe("选词解释流程", () => {
     await page.evaluate(() => document.querySelector("#i-am-fine-overlay")?.remove());
     await expect(trigger).toBeVisible();
     await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`本次只使用了“算法”`);
+    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
   });
 
   test("HTTP/HTTPS 同源与跨源 frame 都能划词解释，特殊来源 frame 不注入", async ({ extension }) => {
@@ -417,13 +402,13 @@ test.describe("选词解释流程", () => {
     const sameTrigger = sameFrame.getByRole("button", { name: "解释这个词" });
     await expect(sameTrigger).toBeVisible();
     await sameTrigger.click();
-    await expect(sameFrame.getByRole("dialog")).toContainText("本次只使用了“算法”");
+    await expect(sameFrame.getByRole("dialog")).toContainText("专业解释");
 
     await selectTextInFrame(crossFrame, "算法");
     const crossTrigger = crossFrame.getByRole("button", { name: "解释这个词" });
     await expect(crossTrigger).toBeVisible();
     await crossTrigger.click();
-    await expect(crossFrame.getByRole("dialog")).toContainText("本次只使用了“算法”");
+    await expect(crossFrame.getByRole("dialog")).toContainText("专业解释");
 
     await expect(dataFrame.getByRole("button", { name: "解释这个词" })).toHaveCount(0);
   });
