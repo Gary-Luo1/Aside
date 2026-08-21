@@ -104,7 +104,10 @@ describe("api-client 真实 HTTP 链路", () => {
       content: string;
     }>;
     expect(messages[0]).toMatchObject({ role: "system" });
-    expect(messages[1]).toMatchObject({ role: "user", content: "请解释术语：API" });
+    expect(messages[1]?.role).toBe("user");
+    expect(messages[1]?.content).toContain("<<<TERM");
+    expect(messages[1]?.content).toContain("API");
+    expect(messages[1]?.content).toContain("TERM>>>");
     const serialized = JSON.stringify(lastRequestBody);
     expect(serialized).not.toContain("pageUrl");
     expect(serialized).not.toContain("title");

@@ -18,7 +18,7 @@
   --focus: #2f7de0;
   --on-accent: #12301c;
   --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
-  --hand: "ZCOOL KuaiLe", "Wawati SC", "HanziPen SC", "Yuanti SC", "PingFang SC", sans-serif;
+  --text: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --wax:
@@ -62,12 +62,8 @@ button:focus-visible {
 
 .trigger,
 .hint,
-.card,
-.close,
-.expand,
-.action-button,
-.term {
-  filter: url("#crayon-wobble");
+.card {
+  font-family: var(--text);
 }
 
 .trigger {
@@ -79,7 +75,6 @@ button:focus-visible {
   border: 4px solid var(--ink);
   border-radius: 42% 58% 50% 50% / 48% 40% 60% 52%;
   background: var(--wax), var(--green);
-  font-family: var(--hand);
   font-size: 16px;
   animation: crayon-in 0.28s var(--ease-out);
 }
@@ -99,7 +94,6 @@ button:focus-visible {
   border: 4px solid var(--ink);
   border-radius: 28px 18px 24px 20px / 20px 26px 16px 24px;
   background: var(--wax), var(--surface);
-  font-family: var(--hand);
   font-size: 15px;
   line-height: 1.6;
   pointer-events: none;
@@ -118,7 +112,6 @@ button:focus-visible {
     radial-gradient(circle at 10% 12%, rgba(255, 79, 134, 0.1), transparent 26%),
     var(--surface);
   box-shadow: 9px 11px 0 rgba(47, 125, 224, 0.14);
-  font-family: var(--hand);
   font-size: 15px;
   line-height: 1.65;
   animation: crayon-in 0.3s var(--ease-out);
@@ -135,6 +128,7 @@ button:focus-visible {
 
 .card-header .kicker {
   display: inline-flex;
+  filter: url("#crayon-wobble");
   font-family: var(--display);
   font-size: 32px;
   letter-spacing: 0.02em;
@@ -240,8 +234,8 @@ button:focus-visible {
 
 .col h3 {
   margin-bottom: 10px;
-  font-size: 17px;
-  font-weight: 400;
+  font-size: 16px;
+  font-weight: 650;
 }
 
 .col h3::after {

@@ -10,6 +10,7 @@ import {
   selectText,
   test,
 } from "./helpers";
+import { clickOverlayButton, expectOverlayDialogText, overlayButtonCount } from "./overlay-cdp";
 
 const OUT_DIR = path.resolve(__dirname, "../../../docs/visual-evidence");
 
@@ -76,9 +77,8 @@ test.describe("视觉证据", () => {
       "云计算",
       { settleMs: 250 },
     );
-    const expand = page.getByRole("button", { name: "展开完整解释" });
-    if (await expand.isVisible()) {
-      await expand.click();
+    if (await overlayButtonCount(page, "展开完整解释")) {
+      await clickOverlayButton(page, "展开完整解释");
       await page.waitForTimeout(150);
     }
     await page.screenshot({ path: path.join(OUT_DIR, "600x900-narrow-expanded.png") });
@@ -88,8 +88,8 @@ test.describe("视觉证据", () => {
     const page = await openTutorialPage(extension.context);
     await page.setViewportSize({ width: 1440, height: 900 });
     await selectText(page, "API");
-    await page.getByRole("button", { name: "解释这个词" }).click();
-    await expect(page.getByRole("dialog")).toContainText("尚未配置 AI 接口");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "尚未配置 AI 接口");
     await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(OUT_DIR, "unconfigured.png") });
   });
@@ -100,8 +100,8 @@ test.describe("视觉证据", () => {
     const page = await openTutorialPage(extension.context);
     await page.setViewportSize({ width: 1440, height: 900 });
     await selectText(page, "API");
-    await page.getByRole("button", { name: "解释这个词" }).click();
-    await expect(page.getByRole("dialog")).toContainText("429");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "429");
     await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(OUT_DIR, "error.png") });
   });

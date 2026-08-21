@@ -88,7 +88,9 @@
           <div class="panel-head">
             <p class="kicker">配置</p>
             <h1 id="config-title">接口</h1>
-            <p class="intro">解释会出现在你划出的词旁边。请求直接发往你填写的地址。</p>
+            <p class="intro">
+              本扩展面向会自行配置 OpenAI 兼容接口的人。划词后的解释直接发往你填写的地址，插件方不提供模型、也不代收费用。
+            </p>
           </div>
 
           <form id="config-form" novalidate>
@@ -133,6 +135,11 @@
               />
             </div>
 
+            <label class="toggle" for="restore-selection">
+              <input type="checkbox" id="restore-selection" />
+              <span>在不允许选择的网页上恢复划词。开启后请刷新已打开的页面。</span>
+            </label>
+
             <p id="status" role="status" aria-live="polite" class="status"></p>
 
             <div class="actions">
@@ -142,7 +149,13 @@
             </div>
           </form>
 
-          <p class="privacy-note">API Key 只保存在当前浏览器本地，查询时只发送你选中的文本。</p>
+          <p class="privacy-note">
+            API Key 只保存在当前浏览器本地。查询时只发送你选中的短文本，每次解释由你的模型厂商计费。
+            详见
+            <a href="https://github.com/Gary-Luo1/i-am-fine/blob/main/docs/privacy.md" target="_blank" rel="noreferrer"
+              >隐私说明</a
+            >。
+          </p>
         </div>
       </section>
     </main>

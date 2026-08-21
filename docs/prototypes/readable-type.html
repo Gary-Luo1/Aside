@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aside 字体原型 · 仅 aside 用手绘体</title>
+    <style>
+      @font-face {
+        font-family: "Gochi Hand";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("../../extension/public/fonts/gochi-hand.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "ZCOOL KuaiLe";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("../../extension/public/fonts/zcool-kuaile.woff2") format("woff2");
+      }
+
+      :root {
+        --ink: #1a1410;
+        --ink-soft: #3b2f28;
+        --muted: #6d5648;
+        --paper: #f3ead4;
+        --surface: #fff8e8;
+        --field: #fffdf6;
+        --pink: #ff4f86;
+        --orange: #ff8a2a;
+        --green: #2fbf6a;
+        --blue: #2f7de0;
+        --purple: #8a4fe0;
+        --danger: #e23d5b;
+        --danger-soft: #ffd6e0;
+        --on-accent: #12301c;
+        --display: "Gochi Hand", "Marker Felt", cursive;
+        --hand: "ZCOOL KuaiLe", "Yuanti SC", "PingFang SC", sans-serif;
+        --text: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+        --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        --wax: repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1.4px 5px),
+          repeating-linear-gradient(-28deg, rgba(26, 20, 16, 0.08) 0 1px, transparent 1px 6px);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: #efe6d2;
+        font: 15px/1.6 var(--text);
+      }
+
+      .page { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+      .intro h1 { margin: 0 0 8px; font-size: 22px; }
+      .intro p { margin: 0 0 22px; color: var(--muted); max-width: 62ch; }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+      .col-label {
+        margin: 0 0 10px;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+      }
+
+      .stage {
+        min-height: 720px;
+        padding: 22px 18px 28px;
+        border: 1px solid #d7cbb3;
+        border-radius: 12px;
+        background: var(--paper);
+      }
+
+      .wordmark {
+        display: inline-flex;
+        margin-bottom: 8px;
+        font-family: var(--display);
+        font-size: 42px;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+        line-height: 0.85;
+      }
+      .now .wordmark { filter: url("#crayon-wobble"); }
+      .wordmark span:nth-child(1) { color: var(--pink); transform: rotate(-6deg); }
+      .wordmark span:nth-child(2) { color: var(--purple); transform: rotate(4deg); }
+      .wordmark span:nth-child(3) { color: var(--blue); transform: rotate(-3deg); }
+      .wordmark span:nth-child(4) { color: var(--green); transform: rotate(5deg); }
+      .wordmark span:nth-child(5) { color: var(--orange); transform: rotate(-4deg); }
+
+      .sub { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+
+      .panel {
+        position: relative;
+        margin-bottom: 18px;
+        padding: 16px 16px 14px;
+        border: 5px solid var(--ink);
+        border-radius: 34px 18px 40px 22px / 22px 36px 16px 32px;
+        background: var(--wax), var(--surface);
+      }
+      .now .panel,
+      .now .trigger,
+      .now .chip,
+      .now button.ui,
+      .now .field input,
+      .now .card {
+        filter: url("#crayon-wobble");
+      }
+
+      .now .panel,
+      .now .card,
+      .now .trigger,
+      .now .chip,
+      .now button.ui,
+      .now label,
+      .now .body-copy,
+      .now .col h3,
+      .now .col p,
+      .now .foot {
+        font-family: var(--hand);
+      }
+
+      .next .panel,
+      .next .card,
+      .next .trigger,
+      .next .chip,
+      .next button.ui,
+      .next label,
+      .next .body-copy,
+      .next .col h3,
+      .next .col p,
+      .next .foot,
+      .next .sub {
+        font-family: var(--text);
+      }
+      .next .wordmark { filter: url("#crayon-wobble"); }
+
+      label { display: block; margin: 0 0 6px; color: var(--purple); font-size: 14px; }
+      .field { margin-bottom: 10px; }
+      .field input {
+        width: 100%;
+        height: 42px;
+        padding: 0 12px;
+        border: 4px solid var(--ink);
+        border-radius: 18px 28px 14px 24px / 22px 14px 26px 16px;
+        background: var(--field);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      button.ui {
+        min-height: 40px;
+        padding: 0 14px;
+        border: 4px solid var(--ink);
+        border-radius: 40% 60% 55% 45% / 48% 42% 58% 52%;
+        background: var(--wax), var(--green);
+        color: var(--on-accent);
+        font-size: 14px;
+        cursor: default;
+      }
+
+      .row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+
+      .trigger {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        padding: 2px 16px 4px;
+        color: var(--on-accent);
+        border: 4px solid var(--ink);
+        border-radius: 42% 58% 50% 50% / 48% 40% 60% 52%;
+        background: var(--wax), var(--green);
+        font-size: 15px;
+      }
+
+      .card {
+        border: 5px solid var(--ink);
+        border-radius: 34px 18px 40px 22px / 22px 36px 16px 32px;
+        background: var(--wax), var(--surface);
+        overflow: hidden;
+      }
+      .card-header {
+        padding: 12px 14px 10px;
+        border-bottom: 4px dashed var(--ink);
+        background: var(--wax), var(--paper);
+      }
+      .card .wordmark { font-size: 28px; margin: 0 0 6px; }
+      .chip {
+        display: inline-block;
+        max-width: 100%;
+        padding: 2px 10px 3px;
+        color: var(--blue);
+        border: 3px solid var(--ink);
+        border-radius: 16px 22px 14px 20px / 18px 14px 22px 16px;
+        background: var(--wax), #fff;
+        font-family: var(--mono) !important;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .cols { display: grid; grid-template-columns: 1fr 1fr; }
+      .col { min-width: 0; padding: 12px 14px; }
+      .col + .col { border-left: 4px dashed var(--ink); }
+      .col h3 { margin: 0 0 8px; font-size: 15px; font-weight: 650; }
+      .now .col h3 { font-weight: 400; }
+      .col-pro h3 { color: var(--purple); }
+      .col-plain h3 { color: var(--green); }
+      .col p { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
+      .foot {
+        padding: 8px 14px;
+        border-top: 4px dashed var(--ink);
+        background: var(--wax), var(--paper);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .note {
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <defs>
+        <filter id="crayon-wobble" x="-12%" y="-12%" width="124%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="3" seed="8" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="6.5" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+
+    <div class="page">
+      <div class="intro">
+        <h1>字体原型（未改扩展源码）</h1>
+        <p>
+          左边是现在：正文、按钮、解释都用手绘体，整块 UI 还有位移扭曲。右边是提案：只有
+          <b>aside</b> 字标用手绘体并保留轻微扭曲；边框仍用不规则圆角和粗描边；其余文字用系统黑体，方便查阅。
+        </p>
+      </div>
+
+      <div class="grid">
+        <section>
+          <p class="col-label">现在</p>
+          <div class="stage now">
+            <div class="wordmark" aria-label="aside"><span>a</span><span>s</span><span>i</span><span>d</span><span>e</span></div>
+            <p class="sub">已经在你电脑上的旁注</p>
+            <div class="panel">
+              <label>API Base URL</label>
+              <div class="field"><input value="https://api.example.com/v1" readonly /></div>
+              <label>说明</label>
+              <p class="body-copy" style="margin:0 0 10px;color:var(--muted);font-size:13px;line-height:1.6">
+                解释会出现在你划出的词旁边。请求直接发往你填写的地址。
+              </p>
+              <div class="row"><button class="ui" type="button">测试连接</button></div>
+            </div>
+            <span class="trigger">解释这个词</span>
+            <div class="card" style="margin-top:14px">
+              <header class="card-header">
+                <div class="wordmark" aria-hidden="true"><span>a</span><span>s</span><span>i</span><span>d</span><span>e</span></div>
+                <span class="chip">“算法”</span>
+              </header>
+              <div class="cols">
+                <section class="col col-pro">
+                  <h3>专业解释</h3>
+                  <p>在有限步骤内求解某类问题的明确规则。常见技术含义下指可被程序实现的计算过程。</p>
+                </section>
+                <section class="col col-plain">
+                  <h3>通俗解释</h3>
+                  <p>像菜谱：按步骤做就能得到结果，不用每次自己发明做法。</p>
+                </section>
+              </div>
+              <footer class="foot">每次解释会向你配置的接口请求一次，费用由该厂商收取。AI 生成内容可能不准确。</footer>
+            </div>
+            <p class="note">查阅时笔画会被滤镜拉扯，长句更费力。</p>
+          </div>
+        </section>
+
+        <section>
+          <p class="col-label">提案</p>
+          <div class="stage next">
+            <div class="wordmark" aria-label="aside"><span>a</span><span>s</span><span>i</span><span>d</span><span>e</span></div>
+            <p class="sub">已经在你电脑上的旁注</p>
+            <div class="panel">
+              <label>API Base URL</label>
+              <div class="field"><input value="https://api.example.com/v1" readonly /></div>
+              <label>说明</label>
+              <p class="body-copy" style="margin:0 0 10px;color:var(--muted);font-size:13px;line-height:1.6">
+                解释会出现在你划出的词旁边。请求直接发往你填写的地址。
+              </p>
+              <div class="row"><button class="ui" type="button">测试连接</button></div>
+            </div>
+            <span class="trigger">解释这个词</span>
+            <div class="card" style="margin-top:14px">
+              <header class="card-header">
+                <div class="wordmark" aria-hidden="true"><span>a</span><span>s</span><span>i</span><span>d</span><span>e</span></div>
+                <span class="chip">“算法”</span>
+              </header>
+              <div class="cols">
+                <section class="col col-pro">
+                  <h3>专业解释</h3>
+                  <p>在有限步骤内求解某类问题的明确规则。常见技术含义下指可被程序实现的计算过程。</p>
+                </section>
+                <section class="col col-plain">
+                  <h3>通俗解释</h3>
+                  <p>像菜谱：按步骤做就能得到结果，不用每次自己发明做法。</p>
+                </section>
+              </div>
+              <footer class="foot">每次解释会向你配置的接口请求一次，费用由该厂商收取。AI 生成内容可能不准确。</footer>
+            </div>
+            <p class="note">手绘只留在 aside；蜡笔边框还在，正文不再扭。</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

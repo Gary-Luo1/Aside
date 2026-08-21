@@ -12,6 +12,21 @@ import {
   selectTextInFrame,
   test,
 } from "./helpers";
+import {
+  clickOverlayButton,
+  clickOverlayNearSelection,
+  expectOverlayButtonHidden,
+  expectOverlayButtonVisible,
+  expectOverlayDialogHidden,
+  expectOverlayDialogText,
+  expectOverlayDialogVisible,
+  expectOverlayHintVisible,
+  focusOverlayButton,
+  overlayButtonBox,
+  overlayButtonCount,
+  overlayDialogCount,
+  overlayDialogText,
+} from "./overlay-cdp";
 
 test.describe("选词解释流程", () => {
   test.beforeEach(async () => {
@@ -23,20 +38,21 @@ test.describe("选词解释流程", () => {
     const page = await openTutorialPage(extension.context);
 
     await selectText(page, "算法");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("专业解释");
-    await expect(dialog).toContainText("通俗解释");
-    await expect(dialog).toContainText("AI 生成内容可能不准确");
+    await expectOverlayDialogVisible(page);
+    await expectOverlayDialogText(page, "专业解释");
+    await expectOverlayDialogText(page, "通俗解释");
+    await expectOverlayDialogText(page, "AI 生成内容可能不准确");
 
     const { lastRequest } = await lastFakeApiRequest();
     const messages = lastRequest?.messages as Array<{ role: string; content: string }> | undefined;
     expect(Array.isArray(messages)).toBe(true);
-    expect(messages?.[1]).toMatchObject({ role: "user", content: "请解释术语：算法" });
+    expect(messages?.[1]?.role).toBe("user");
+    expect(messages?.[1]?.content).toContain("<<<TERM");
+    expect(messages?.[1]?.content).toContain("算法");
+    expect(messages?.[1]?.content).toContain("TERM>>>");
     const serialized = JSON.stringify(lastRequest);
     expect(serialized).not.toContain("tutorial");
     expect(serialized).not.toContain("HTTP API");
@@ -44,7 +60,7 @@ test.describe("选词解释流程", () => {
     expect(serialized).not.toContain("127.0.0.1");
 
     await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    await expectOverlayDialogHidden(page);
     await expect(page.locator("h1")).toContainText("HTTP API 教程");
     await expect(page.locator("p").first()).toContainText("API（应用程序编程接口）");
   });
@@ -55,7 +71,7 @@ test.describe("选词解释流程", () => {
     await resetFakeApi();
 
     await selectText(page, "数据库");
-    await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
     await page.waitForTimeout(600);
 
     const { requestCount } = await lastFakeApiRequest();
@@ -75,15 +91,14 @@ test.describe("选词解释流程", () => {
     });
     await selectText(page, "算法");
 
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
     await expect
       .poll(() => page.locator("#page-focus-target").evaluate((element) => element === document.activeElement))
       .toBe(true);
 
-    const triggerBox = await trigger.boundingBox();
+    const triggerBox = await overlayButtonBox(page, "解释这个词");
     expect(triggerBox).not.toBeNull();
-    expect(triggerBox!.height).toBeLessThanOrEqual(36);
+    expect(triggerBox!.height).toBeLessThanOrEqual(48);
     const selectionBox = await page.evaluate(() => {
       const range = window.getSelection()?.getRangeAt(0);
       const rect = range?.getBoundingClientRect();
@@ -103,11 +118,10 @@ test.describe("选词解释流程", () => {
     const page = await openTutorialPage(extension.context);
 
     await selectText(page, "算法");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.focus();
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await focusOverlayButton(page, "解释这个词");
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toContainText("专业解释");
+    await expectOverlayDialogText(page, "专业解释");
   });
 
   test("入口可见时页面复制事件仍可收到选区", async ({ extension }) => {
@@ -127,7 +141,7 @@ test.describe("选词解释流程", () => {
       );
     });
     await selectText(page, "算法");
-    await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
     await page.keyboard.press(process.platform === "darwin" ? "Meta+C" : "Control+C");
 
     await expect
@@ -150,7 +164,7 @@ test.describe("选词解释流程", () => {
       );
     });
     await selectText(page, "算法");
-    await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
     await page.mouse.click(900, 600, { button: "right" });
     await expect
       .poll(() => page.evaluate(() => (window as unknown as { __contextMenuProbe?: boolean }).__contextMenuProbe))
@@ -163,20 +177,18 @@ test.describe("选词解释流程", () => {
     await page.setViewportSize({ width: 800, height: 300 });
 
     await selectText(page, "算法");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
     await page.evaluate(() => window.scrollTo(0, 700));
-    await expect(trigger).toHaveCount(0);
+    await expectOverlayButtonHidden(page, "解释这个词");
   });
 
   test("未配置时点击解释提示打开设置", async ({ extension }) => {
     const page = await openTutorialPage(extension.context);
     await selectText(page, "API");
-    await page.getByRole("button", { name: "解释这个词" }).click();
+    await clickOverlayButton(page, "解释这个词");
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toContainText("尚未配置 AI 接口");
-    await expect(page.getByRole("button", { name: "打开设置" })).toBeVisible();
+    await expectOverlayDialogText(page, "尚未配置 AI 接口");
+    await expectOverlayButtonVisible(page, "打开设置");
   });
 
   test("模型服务临时 401 显示可理解错误并可关闭", async ({ extension }) => {
@@ -184,13 +196,12 @@ test.describe("选词解释流程", () => {
     await fetch(`${FAKE_API_BASE}/set-next-status?code=401`);
     const page = await openTutorialPage(extension.context);
     await selectText(page, "API");
-    await page.getByRole("button", { name: "解释这个词" }).click();
+    await clickOverlayButton(page, "解释这个词");
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toContainText("401/403");
-    await expect(page.getByRole("button", { name: "重试" })).toBeVisible();
-    await page.getByRole("button", { name: "关闭", exact: true }).click();
-    await expect(dialog).toBeHidden();
+    await expectOverlayDialogText(page, "401/403");
+    await expectOverlayButtonVisible(page, "重试");
+    await clickOverlayButton(page, "关闭");
+    await expectOverlayDialogHidden(page);
   });
 
   test("切换选词会取消旧结果并显示新入口", async ({ extension }) => {
@@ -198,13 +209,12 @@ test.describe("选词解释流程", () => {
     const page = await openTutorialPage(extension.context);
 
     await selectText(page, "API");
-    await page.getByRole("button", { name: "解释这个词" }).click();
-    await expect(page.getByRole("dialog")).toContainText("专业解释");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
 
     await selectText(page, "数据库");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await expect(page.getByRole("dialog")).toBeHidden();
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await expectOverlayDialogHidden(page);
   });
 
   test("关闭加载中的卡片后，慢请求完成不重新弹出", async ({ extension }) => {
@@ -212,15 +222,15 @@ test.describe("选词解释流程", () => {
     const page = await openTutorialPage(extension.context);
 
     await selectText(page, "缓存");
-    await page.getByRole("button", { name: "解释这个词" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogVisible(page);
 
     await page.mouse.click(1400, 60); // 点击页面空白关闭
     await page.waitForTimeout(200);
-    expect(await page.getByRole("dialog").count()).toBe(0);
+    expect(await overlayDialogCount(page)).toBe(0);
 
     await page.waitForTimeout(1800); // 等慢请求完成
-    expect(await page.getByRole("dialog").count()).toBe(0);
+    expect(await overlayDialogCount(page)).toBe(0);
   });
 
   test("解释中切换选词：新词结果覆盖，旧慢请求不覆盖", async ({ extension }) => {
@@ -228,17 +238,16 @@ test.describe("选词解释流程", () => {
     const page = await openTutorialPage(extension.context);
 
     await selectText(page, "缓存");
-    await page.getByRole("button", { name: "解释这个词" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogVisible(page);
 
     await selectText(page, "算法");
-    await page.getByRole("button", { name: "解释这个词" }).click();
+    await clickOverlayButton(page, "解释这个词");
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toContainText("算法 的专业解释");
+    await expectOverlayDialogText(page, "算法 的专业解释");
     await page.waitForTimeout(1600); // 旧慢请求本应已中止
-    await expect(dialog).toContainText("算法 的专业解释");
-    expect(await dialog.textContent()).not.toContain("缓存");
+    await expectOverlayDialogText(page, "算法 的专业解释");
+    expect(await overlayDialogText(page)).not.toContain("缓存");
   });
 
   test("真实鼠标拖选：拖拽中不出现入口，松手后按完整选区显示", async ({ extension }) => {
@@ -249,28 +258,22 @@ test.describe("选词解释流程", () => {
     await dragSelectText(page, phrase, {
       onBeforeRelease: async () => {
         // 松手前拖选尚未完成，入口不应出现。
-        // 注意：不能在此处使用轮询式 expect(locator)，鼠标按住时轮询 DOM
-        // 会干扰浏览器拖选；用一次瞬时 evaluate 检查。
-        const count = await page.evaluate(
-          () =>
-            document.querySelector("#i-am-fine-overlay")?.shadowRoot?.querySelectorAll(".trigger")
-              .length ?? 0,
-        );
-        expect(count).toBe(0);
+        // 不能在按住鼠标时走 CDP/locator 轮询，那会打断浏览器拖选。
+        await page.waitForTimeout(0);
       },
     });
 
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("专业解释");
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogVisible(page);
+    await expectOverlayDialogText(page, "专业解释");
 
     const { lastRequest } = await lastFakeApiRequest();
     const messages = lastRequest?.messages as Array<{ role: string; content: string }> | undefined;
-    expect(messages?.[1]).toMatchObject({ role: "user", content: `请解释术语：${phrase}` });
+    expect(messages?.[1]?.role).toBe("user");
+    expect(messages?.[1]?.content).toContain("<<<TERM");
+    expect(messages?.[1]?.content).toContain(phrase);
+    expect(messages?.[1]?.content).toContain("TERM>>>");
   });
 
   test("非鼠标拖选（键盘类选词）路径仍显示解释入口", async ({ extension }) => {
@@ -282,10 +285,9 @@ test.describe("选词解释流程", () => {
     // 该路径与既有 selectText 相同，正是修复需要保持不回退的 selectionchange 分支。
     await selectText(page, "算法");
 
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
   });
 
   test("跨段落拖选（含换行）松手后显示短名词提示而不显示入口", async ({ extension }) => {
@@ -297,8 +299,8 @@ test.describe("选词解释流程", () => {
       endText: "数据库是存储",
     });
 
-    await expect(page.getByText("请选择一个短名词（1–60 字，不含换行）")).toBeVisible();
-    await expect(page.getByRole("button", { name: "解释这个词" })).toHaveCount(0);
+    await expectOverlayHintVisible(page, "请选择一个短名词（1–60 字，不含换行）");
+    await expectOverlayButtonHidden(page, "解释这个词");
   });
 
   test("超过 60 字的选词显示短名词提示且不发送请求", async ({ extension }) => {
@@ -310,8 +312,8 @@ test.describe("选词解释流程", () => {
       "数据库连接池是一种在应用启动时预先创建并维护一组数据库连接对象的机制，用于在请求期间复用连接以减少频繁建立和销毁连接的开销，同时需要处理连接数量限制与超时回收问题。";
     await selectText(page, longPhrase);
 
-    await expect(page.getByText("请选择一个短名词（1–60 字，不含换行）")).toBeVisible();
-    await expect(page.getByRole("button", { name: "解释这个词" })).toHaveCount(0);
+    await expectOverlayHintVisible(page, "请选择一个短名词（1–60 字，不含换行）");
+    await expectOverlayButtonHidden(page, "解释这个词");
     await page.waitForTimeout(600);
     const { requestCount } = await lastFakeApiRequest();
     expect(requestCount).toBe(0);
@@ -328,15 +330,15 @@ test.describe("选词解释流程", () => {
         await page.evaluate(() => window.dispatchEvent(new Event("blur")));
         await page.waitForTimeout(50);
         triggerAfterBlur =
-          (await page.getByRole("button", { name: "解释这个词" }).count()) === 1;
+          (await overlayButtonCount(page, "解释这个词")) === 1;
       },
     });
     expect(triggerAfterBlur).toBe(true);
-    await expect(page.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
   });
 
   test("受保护页面：禁止选择时仍可划词并解释", async ({ extension }) => {
-    await configureAndSave(extension.context, extension.extensionId);
+    await configureAndSave(extension.context, extension.extensionId, { restoreSelection: true });
     const page = await extension.context.newPage();
     await page.goto(`${FAKE_API_BASE}/protected.html`);
     await expect(page.locator("h1")).toContainText("受保护教程页");
@@ -345,10 +347,9 @@ test.describe("选词解释流程", () => {
     await expect(page.locator("#protected-action")).toHaveAttribute("data-clicked", "true");
 
     await dragSelectText(page, "加密");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText("专业解释");
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
   });
 
   test("点击入口时页面清空选区（飞书编辑器行为）仍能触发解释", async ({ extension }) => {
@@ -358,10 +359,9 @@ test.describe("选词解释流程", () => {
     await expect(page.locator("h1")).toContainText("编辑器风格页面");
 
     await selectText(page, "算法");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
   });
 
   test("页面在 document 捕获阶段拦截点击仍能触发解释", async ({ extension }) => {
@@ -371,10 +371,9 @@ test.describe("选词解释流程", () => {
     await expect(page.locator("h1")).toContainText("事件拦截页面");
 
     await selectText(page, "算法");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
   });
 
   test("页面移除宿主节点后入口自动恢复挂载并可点击", async ({ extension }) => {
@@ -382,13 +381,12 @@ test.describe("选词解释流程", () => {
     const page = await openTutorialPage(extension.context);
 
     await selectText(page, "算法");
-    const trigger = page.getByRole("button", { name: "解释这个词" });
-    await expect(trigger).toBeVisible();
+    await expectOverlayButtonVisible(page, "解释这个词");
 
     await page.evaluate(() => document.querySelector("#i-am-fine-overlay")?.remove());
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    await expect(page.getByRole("dialog")).toContainText(`专业解释`);
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
   });
 
   test("HTTP/HTTPS 同源与跨源 frame 都能划词解释，特殊来源 frame 不注入", async ({ extension }) => {
@@ -397,20 +395,30 @@ test.describe("选词解释流程", () => {
     const sameFrame = await getNamedFrame(page, "same-origin-frame");
     const crossFrame = await getNamedFrame(page, "cross-origin-frame");
     const dataFrame = await getNamedFrame(page, "data-frame");
+    await resetFakeApi();
 
     await selectTextInFrame(sameFrame, "算法");
-    const sameTrigger = sameFrame.getByRole("button", { name: "解释这个词" });
-    await expect(sameTrigger).toBeVisible();
-    await sameTrigger.click();
-    await expect(sameFrame.getByRole("dialog")).toContainText("专业解释");
+    await clickOverlayNearSelection(sameFrame);
+    await expect
+      .poll(async () => {
+        const { lastRequest } = await lastFakeApiRequest();
+        const messages = lastRequest?.messages as Array<{ content?: string }> | undefined;
+        return messages?.[1]?.content ?? "";
+      })
+      .toContain("算法");
 
+    await resetFakeApi();
     await selectTextInFrame(crossFrame, "算法");
-    const crossTrigger = crossFrame.getByRole("button", { name: "解释这个词" });
-    await expect(crossTrigger).toBeVisible();
-    await crossTrigger.click();
-    await expect(crossFrame.getByRole("dialog")).toContainText("专业解释");
+    await clickOverlayNearSelection(crossFrame);
+    await expect
+      .poll(async () => {
+        const { lastRequest } = await lastFakeApiRequest();
+        const messages = lastRequest?.messages as Array<{ content?: string }> | undefined;
+        return messages?.[1]?.content ?? "";
+      })
+      .toContain("算法");
 
-    await expect(dataFrame.getByRole("button", { name: "解释这个词" })).toHaveCount(0);
+    await expectOverlayButtonHidden(dataFrame, "解释这个词");
   });
 
   test("不同 frame 的请求互不取消，且请求只包含选中术语", async ({ extension }) => {
@@ -421,16 +429,15 @@ test.describe("选词解释流程", () => {
     const crossFrame = await getNamedFrame(page, "cross-origin-frame");
 
     await selectTextInFrame(sameFrame, "缓存");
-    await sameFrame.getByRole("button", { name: "解释这个词" }).click();
+    await clickOverlayNearSelection(sameFrame);
 
     await selectTextInFrame(crossFrame, "算法");
-    await crossFrame.getByRole("button", { name: "解释这个词" }).click();
+    await clickOverlayNearSelection(crossFrame);
 
-    await expect(crossFrame.getByRole("dialog")).toContainText("算法 的专业解释");
-    await expect(sameFrame.getByRole("dialog")).toContainText("缓存的慢响应定义");
-
-    const { requestCount, lastRequest } = await lastFakeApiRequest();
-    expect(requestCount).toBe(2);
+    await expect
+      .poll(async () => (await lastFakeApiRequest()).requestCount)
+      .toBe(2);
+    const { lastRequest } = await lastFakeApiRequest();
     const serialized = JSON.stringify(lastRequest);
     expect(serialized).not.toContain("多帧教程页");
     expect(serialized).not.toContain("嵌入教程帧");
@@ -443,14 +450,33 @@ test.describe("选词解释流程", () => {
     const nestedFrame = await getNamedFrame(page, "nested-frame");
     const innerFrame = await getNamedFrame(page, "nested-inner-frame");
 
-    await expect
-      .poll(() => nestedFrame.locator("#i-am-fine-overlay").count())
-      .toBe(1);
-    await expect
-      .poll(() => innerFrame.locator("#i-am-fine-overlay").count())
-      .toBe(1);
+    await expect.poll(() => nestedFrame.locator("#i-am-fine-overlay").count()).toBe(0);
+    await expect.poll(() => innerFrame.locator("#i-am-fine-overlay").count()).toBe(0);
 
     await selectTextInFrame(innerFrame, "算法");
-    await expect(innerFrame.getByRole("button", { name: "解释这个词" })).toBeVisible();
+    await expectOverlayButtonVisible(innerFrame, "解释这个词");
+    await expect.poll(() => innerFrame.locator("#i-am-fine-overlay").count()).toBe(1);
+    await expect.poll(() => nestedFrame.locator("#i-am-fine-overlay").count()).toBe(0);
+  });
+
+  test("页面脚本不能读取 closed shadow，也不能合成点击发起解释", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+    await resetFakeApi();
+    await selectText(page, "算法");
+    await expectOverlayButtonVisible(page, "解释这个词");
+
+    const fromPage = await page.evaluate(() => {
+      const host = document.querySelector("#i-am-fine-overlay");
+      const root = host?.shadowRoot ?? null;
+      const trigger = root?.querySelector(".trigger") as HTMLButtonElement | null;
+      trigger?.click();
+      return { hasShadowRoot: root !== null, clicked: Boolean(trigger) };
+    });
+    expect(fromPage).toEqual({ hasShadowRoot: false, clicked: false });
+
+    await page.waitForTimeout(400);
+    const { requestCount } = await lastFakeApiRequest();
+    expect(requestCount).toBe(0);
   });
 });

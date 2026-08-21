@@ -1,12 +1,18 @@
 import {
   isConfigTestRequest,
   isExplainTermRequest,
+  isGetSettingsRequest,
   isOptionsPageSender,
   isPageSender,
   type ExtensionError,
 } from "../shared/messages";
 import { sanitizeTerm } from "../shared/term";
-import { loadConfig, restrictStorageAccessLevel, validateConfig } from "../shared/config";
+import {
+  loadConfig,
+  loadRestoreSelection,
+  restrictStorageAccessLevel,
+  validateConfig,
+} from "../shared/config";
 import { explainTerm, testConnection } from "./api-client";
 import { ExplanationCoordinator } from "./explanation-coordinator";
 
@@ -39,6 +45,11 @@ chrome.runtime.onMessage.addListener(
 );
 
 async function handleMessage(message: unknown, sender: chrome.runtime.MessageSender): Promise<unknown> {
+  if (isGetSettingsRequest(message)) {
+    if (!isPageSender(sender)) return undefined;
+    return { ok: true, restoreSelection: await loadRestoreSelection() };
+  }
+
   if (isConfigTestRequest(message)) {
     if (!isOptionsPageSender(sender)) return undefined;
     const validation = validateConfig(message.config);

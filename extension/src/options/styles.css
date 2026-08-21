@@ -6,14 +6,6 @@
   src: url("public/fonts/gochi-hand.woff2") format("woff2");
 }
 
-@font-face {
-  font-family: "ZCOOL KuaiLe";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("public/fonts/zcool-kuaile.woff2") format("woff2");
-}
-
 :root {
   color-scheme: light;
   --ink: #1a1410;
@@ -34,7 +26,7 @@
   --focus: #2f7de0;
   --on-accent: #12301c;
   --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
-  --hand: "ZCOOL KuaiLe", "Wawati SC", "HanziPen SC", "Yuanti SC", "PingFang SC", sans-serif;
+  --text: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --wax:
@@ -73,7 +65,7 @@ body {
   overflow-x: hidden;
   color: var(--ink);
   background: var(--paper);
-  font-family: var(--hand);
+  font-family: var(--text);
   font-size: 16px;
   line-height: 1.65;
 }
@@ -234,7 +226,6 @@ input:focus-visible {
   border: 4px solid var(--ink);
   border-radius: 40% 60% 48% 52% / 52% 42% 58% 48%;
   background: var(--wax), #efe0ff;
-  filter: url("#crayon-wobble");
   font-size: 15px;
   transform: rotate(3deg);
   white-space: nowrap;
@@ -276,16 +267,18 @@ input:focus-visible {
 .kicker {
   margin: 0 0 2px;
   color: var(--pink);
-  font-size: 20px;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
 }
 
 h1 {
   margin: 0 0 8px;
   color: var(--blue);
-  font-size: 42px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  line-height: 1;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.15;
 }
 
 .intro {
@@ -321,7 +314,6 @@ input {
   background: var(--field);
   font-family: var(--mono);
   font-size: 13px;
-  filter: url("#crayon-wobble");
 }
 
 input::placeholder {
@@ -357,7 +349,6 @@ input:-webkit-autofill:focus {
   border: 3.5px dashed var(--ink);
   border-radius: 22px 16px 26px 18px / 18px 24px 16px 22px;
   background: var(--wax), #fff4c8;
-  filter: url("#crayon-wobble");
   font-size: 15px;
   line-height: 1.55;
 }
@@ -394,7 +385,6 @@ button {
   border-radius: 40% 60% 55% 45% / 48% 42% 58% 52%;
   background: var(--wax), #fff;
   font-size: 16px;
-  filter: url("#crayon-wobble");
   transition: transform 0.15s var(--ease-out);
 }
 
@@ -438,6 +428,29 @@ button:disabled {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+}
+
+.privacy-note a {
+  color: var(--blue);
+}
+
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.toggle input {
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+  filter: none;
 }
 
 @media (max-width: 520px) {

@@ -3,7 +3,7 @@ export interface AiConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
-  /** 兼容旧配置中的字段；运行时始终恢复划词，不再作为开关使用。 */
+  /** 旧存储可能仍带此字段；运行时以独立的 restoreSelection 键为准。 */
   restoreSelection?: boolean;
 }
 
@@ -24,6 +24,7 @@ export const ERROR_CODES = [
   "server_error",
   "timeout",
   "bad_response",
+  "host_permission",
   "unknown",
 ] as const;
 
@@ -38,12 +39,16 @@ export interface ExtensionError {
 export const MESSAGE_TYPES = {
   CONFIG_TEST_REQUEST: "CONFIG_TEST_REQUEST",
   EXPLAIN_TERM_REQUEST: "EXPLAIN_TERM_REQUEST",
+  GET_SETTINGS_REQUEST: "GET_SETTINGS_REQUEST",
 } as const;
 
 /** content/options → 后台 的请求；载荷在后台可信边界重新校验。 */
 export type RuntimeRequest =
   | { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig }
-  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string };
+  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string }
+  | { type: typeof MESSAGE_TYPES.GET_SETTINGS_REQUEST };
+
+export type SettingsResult = { ok: true; restoreSelection: boolean };
 
 /** 后台对解释请求的稳定响应。 */
 export type ExplainResult =
@@ -69,6 +74,12 @@ export function isConfigTestRequest(
   value: unknown,
 ): value is { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig } {
   return isRecord(value) && value.type === MESSAGE_TYPES.CONFIG_TEST_REQUEST && isRecord(value.config);
+}
+
+export function isGetSettingsRequest(
+  value: unknown,
+): value is { type: typeof MESSAGE_TYPES.GET_SETTINGS_REQUEST } {
+  return isRecord(value) && value.type === MESSAGE_TYPES.GET_SETTINGS_REQUEST;
 }
 
 // —— 响应守卫：助手函数校验真实回包形状，不再靠强转 ——
@@ -115,10 +126,22 @@ export async function requestConfigTest(config: AiConfig): Promise<ConfigTestRes
   return isConfigTestResult(response) ? response : { ok: false, error: unexpected() };
 }
 
+export async function requestSettings(): Promise<SettingsResult> {
+  const response = await send({ type: MESSAGE_TYPES.GET_SETTINGS_REQUEST });
+  if (isRecord(response) && response.ok === true && typeof response.restoreSelection === "boolean") {
+    return { ok: true, restoreSelection: response.restoreSelection };
+  }
+  return { ok: true, restoreSelection: false };
+}
+
 // —— 发送方授权规则：与契约同住 ——
 
 export function isOptionsPageSender(sender: chrome.runtime.MessageSender): boolean {
-  return sender.url?.startsWith(`chrome-extension://${chrome.runtime.id}/`) ?? false;
+  const url = sender.url ?? "";
+  const origin = `chrome-extension://${chrome.runtime.id}/`;
+  if (!url.startsWith(origin)) return false;
+  const path = url.slice(origin.length).split("?")[0] ?? "";
+  return path === "options.html";
 }
 
 export function isPageSender(sender: chrome.runtime.MessageSender): boolean {

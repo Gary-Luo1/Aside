@@ -1,5 +1,5 @@
 {
-  "name": "i-am-fine-prototype",
+  "name": "aside",
   "private": true,
   "scripts": {
     "prototype": "python3 -m http.server 4173 --bind 127.0.0.1 --directory .",

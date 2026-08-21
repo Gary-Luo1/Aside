@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIG_STORAGE_KEY,
+  RESTORE_SELECTION_STORAGE_KEY,
   deleteConfig,
   loadConfig,
+  loadRestoreSelection,
   normalizeBaseUrl,
   restrictStorageAccessLevel,
   saveConfig,
+  saveRestoreSelection,
   validateConfig,
 } from "../../src/shared/config";
 import type { AiConfig } from "../../src/shared/messages";
@@ -92,19 +95,18 @@ describe("validateConfig", () => {
         baseUrl: "https://api.example.com/v1",
         apiKey: "sk-test-123",
         model: "gpt-4o",
-        restoreSelection: true,
       });
     }
   });
 
-  it("读取配置时始终开启恢复划词，忽略旧开关值", () => {
+  it("不再把恢复划词写进接口配置", () => {
     const off = validateConfig({
       baseUrl: "https://api.example.com/v1",
       apiKey: "k",
       model: "m",
       restoreSelection: false,
     });
-    expect(off.ok && off.config.restoreSelection).toBe(true);
+    expect(off.ok && "restoreSelection" in off.config).toBe(false);
   });
 
   it("拒绝缺少必填字段", () => {
@@ -144,7 +146,6 @@ describe("配置读取（loadConfig）", () => {
         baseUrl: "https://api.example.com/v1",
         apiKey: "sk-secret",
         model: "gpt-4o",
-        restoreSelection: true,
       },
     });
   });
@@ -172,15 +173,16 @@ describe("配置读取（loadConfig）", () => {
     }
   });
 
-  it("恢复划词字段缺失或为旧值时统一规范化为 true", async () => {
-    storage.data.set(CONFIG_STORAGE_KEY, sampleConfig);
-    const result = await loadConfig();
-    expect(result.ok && result.config.restoreSelection).toBe(true);
+  it("恢复划词独立存储，默认关闭，旧 aiConfig 中的 true 可迁移", async () => {
+    await expect(loadRestoreSelection()).resolves.toBe(false);
 
-    storage.data.set(CONFIG_STORAGE_KEY, { ...sampleConfig, restoreSelection: false });
-    const coerced = await loadConfig();
-    expect(coerced.ok).toBe(true);
-    if (coerced.ok) expect(coerced.config.restoreSelection).toBe(true);
+    storage.data.set(CONFIG_STORAGE_KEY, { ...sampleConfig, restoreSelection: true });
+    storage.data.delete(RESTORE_SELECTION_STORAGE_KEY);
+    await expect(loadRestoreSelection()).resolves.toBe(true);
+    expect(storage.data.get(RESTORE_SELECTION_STORAGE_KEY)).toBe(true);
+
+    await saveRestoreSelection(false);
+    await expect(loadRestoreSelection()).resolves.toBe(false);
   });
 });
 
@@ -202,7 +204,6 @@ describe("配置写入（saveConfig / deleteConfig）", () => {
       baseUrl: "https://api.example.com/v1",
       apiKey: "k",
       model: "m",
-      restoreSelection: true,
     };
     expect(storage.stub.set).toHaveBeenCalledWith({ [CONFIG_STORAGE_KEY]: normalized });
     expect(storage.data.get(CONFIG_STORAGE_KEY)).toEqual(normalized);

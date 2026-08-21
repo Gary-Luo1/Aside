@@ -14,12 +14,11 @@ import { ExplanationOverlay, type OverlayApi, type RenderData } from "./ui/overl
  * 并执行会话输出的副作用（渲染、计时器、请求）。决策全部在会话模块内。
  */
 export class SelectionController {
-  private readonly overlay: OverlayApi;
+  private overlay: OverlayApi | null = null;
   private readonly session: SelectionSession;
   private hintTimer: number | null = null;
 
   constructor() {
-    this.overlay = new ExplanationOverlay();
     this.session = new SelectionSession({ sanitizeTerm });
   }
 
@@ -33,8 +32,7 @@ export class SelectionController {
     window.addEventListener("pointerdown", (event) => this.handlePointerDown(event), true);
     document.addEventListener("pointerup", (event) => this.handlePointerUp(event));
     document.addEventListener("click", (event) => {
-      // 点击已落在入口/卡片上（解释已触发或卡片在交互）后再解除抑制
-      if (this.overlay.containsEvent(event)) {
+      if (this.overlayContainsEvent(event)) {
         this.apply(this.session.on({ kind: "overlay-click" }));
       }
     });
@@ -45,9 +43,22 @@ export class SelectionController {
     window.addEventListener("blur", () => this.handleBlur());
   }
 
+  private ensureOverlay(): OverlayApi {
+    if (!this.overlay) this.overlay = new ExplanationOverlay();
+    return this.overlay;
+  }
+
+  private overlayContainsEvent(event: Event): boolean {
+    return this.overlay?.containsEvent(event) ?? false;
+  }
+
+  private overlayContainsNode(node: Node | null): boolean {
+    return this.overlay?.containsNode(node) ?? false;
+  }
+
   private handleSelectionChange(): void {
     const snapshot = this.snapshotSelection();
-    if (snapshot?.anchorNode && this.overlay.containsNode(snapshot.anchorNode)) return;
+    if (snapshot?.anchorNode && this.overlayContainsNode(snapshot.anchorNode)) return;
     this.apply(this.session.on({ kind: "selection-changed", selection: snapshot }));
   }
 
@@ -55,7 +66,7 @@ export class SelectionController {
     this.apply(
       this.session.on({
         kind: "pointer-down",
-        insideOverlay: this.overlay.containsEvent(event),
+        insideOverlay: this.overlayContainsEvent(event),
         selection: this.snapshotSelection(),
       }),
     );
@@ -63,11 +74,11 @@ export class SelectionController {
 
   private handlePointerUp(event: PointerEvent): void {
     const snapshot = this.snapshotSelection();
-    if (snapshot?.anchorNode && this.overlay.containsNode(snapshot.anchorNode)) return;
+    if (snapshot?.anchorNode && this.overlayContainsNode(snapshot.anchorNode)) return;
     this.apply(
       this.session.on({
         kind: "pointer-up",
-        insideOverlay: this.overlay.containsEvent(event),
+        insideOverlay: this.overlayContainsEvent(event),
         selection: snapshot,
       }),
     );
@@ -85,7 +96,7 @@ export class SelectionController {
 
   private handleBlur(): void {
     const snapshot = this.snapshotSelection();
-    if (snapshot?.anchorNode && this.overlay.containsNode(snapshot.anchorNode)) return;
+    if (snapshot?.anchorNode && this.overlayContainsNode(snapshot.anchorNode)) return;
     this.apply(this.session.on({ kind: "blur", selection: snapshot }));
   }
 
@@ -157,11 +168,11 @@ export class SelectionController {
         return;
       case "close":
         this.clearHintTimer();
-        this.overlay.close();
+        this.overlay?.close();
         return;
       case "show-hint":
         this.clearHintTimer();
-        this.overlay.render("hint", {
+        this.ensureOverlay().render("hint", {
           term: "",
           anchor: outcome.anchor,
           hintMessage: outcome.message,
@@ -170,14 +181,14 @@ export class SelectionController {
         return;
       case "show-ready":
         this.clearHintTimer();
-        this.overlay.render("ready", {
+        this.ensureOverlay().render("ready", {
           term: outcome.term,
           anchor: outcome.anchor,
           onExplain: (term) => this.explain(term),
         });
         return;
       case "start-explain": {
-        this.overlay.render("loading", {
+        this.ensureOverlay().render("loading", {
           term: outcome.term,
           anchor: this.session.anchor,
           onClose: () => this.close(),
@@ -195,7 +206,7 @@ export class SelectionController {
           data.explanation = outcome.result.explanation;
         } else {
           data.error = outcome.result.error;
-          if (outcome.result.error.code === "unconfigured") {
+          if (outcome.result.error.code === "unconfigured" || outcome.result.error.code === "host_permission") {
             data.onOpenOptions = () => void chrome.runtime.openOptionsPage();
           } else {
             data.onRetry = () => {
@@ -204,7 +215,7 @@ export class SelectionController {
             };
           }
         }
-        this.overlay.render(outcome.result.ok ? "success" : "error", data);
+        this.ensureOverlay().render(outcome.result.ok ? "success" : "error", data);
         return;
       }
     }

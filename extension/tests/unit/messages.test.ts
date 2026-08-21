@@ -4,6 +4,8 @@ import {
   isConfigTestResult,
   isExplainResult,
   isExplainTermRequest,
+  isGetSettingsRequest,
+  isOptionsPageSender,
   requestExplainTerm,
 } from "../../src/shared/messages";
 
@@ -29,6 +31,11 @@ describe("载荷守卫", () => {
     ).toBe(true);
     expect(isConfigTestRequest({ type: "CONFIG_TEST_REQUEST" })).toBe(false);
     expect(isConfigTestRequest({ type: "CONFIG_TEST_REQUEST", config: "x" })).toBe(false);
+  });
+
+  it("isGetSettingsRequest 只认类型", () => {
+    expect(isGetSettingsRequest({ type: "GET_SETTINGS_REQUEST" })).toBe(true);
+    expect(isGetSettingsRequest({ type: "EXPLAIN_TERM_REQUEST", term: "API" })).toBe(false);
   });
 });
 
@@ -77,5 +84,20 @@ describe("助手函数兜底", () => {
     const result = await requestExplainTerm("API");
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("unknown");
+  });
+});
+
+describe("发送方授权", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("isOptionsPageSender 只接受 options.html", () => {
+    vi.stubGlobal("chrome", { runtime: { id: "extid" } });
+    const sender = (url: string) => ({ url }) as chrome.runtime.MessageSender;
+    expect(isOptionsPageSender(sender("chrome-extension://extid/options.html"))).toBe(true);
+    expect(isOptionsPageSender(sender("chrome-extension://extid/options.html?x=1"))).toBe(true);
+    expect(isOptionsPageSender(sender("chrome-extension://extid/public/fonts/gochi-hand.woff2"))).toBe(false);
+    expect(isOptionsPageSender(sender("https://example.com/"))).toBe(false);
   });
 });

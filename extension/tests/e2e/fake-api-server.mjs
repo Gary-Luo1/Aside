@@ -240,7 +240,8 @@ const server = createServer((req, res) => {
       const messages = Array.isArray(body.messages) ? body.messages : [];
       const userMessage = messages.find((m) => m.role === "user");
       const userText = typeof userMessage?.content === "string" ? userMessage.content : "";
-      const term = userText.replace(/^请解释术语：/, "");
+      const isolated = /<<<TERM\s*([\s\S]*?)\s*TERM>>>/.exec(userText);
+      const term = (isolated?.[1] ?? "").trim() || userText.replace(/^请解释术语：/, "");
 
       const authorization = req.headers.authorization ?? "";
       if (authorization.includes("sk-401")) {

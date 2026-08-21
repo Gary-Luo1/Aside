@@ -6,10 +6,11 @@ test.describe("设置页", () => {
     const page = await openOptionsPage(extension.context, extension.extensionId);
     await expect(page.locator("#save")).toBeDisabled();
     await expect(page.locator("#delete-config")).toBeHidden();
-    await expect(page.locator("#restore-selection")).toHaveCount(0);
+    await expect(page.locator("#restore-selection")).toBeVisible();
+    await expect(page.locator("#restore-selection")).not.toBeChecked();
     await expect(page.getByRole("heading", { name: "隐私说明" })).toHaveCount(0);
-    await expect(page.locator(".privacy-note")).toHaveText(
-      "API Key 只保存在当前浏览器本地，查询时只发送你选中的文本。",
+    await expect(page.locator(".privacy-note")).toContainText(
+      "API Key 只保存在当前浏览器本地。查询时只发送你选中的短文本，每次解释由你的模型厂商计费。",
     );
   });
 
@@ -67,5 +68,23 @@ test.describe("设置页", () => {
     await page.locator("#test-connection").click();
     await expect(page.locator("#status")).toContainText("Base URL 无效");
     await expect(page.locator("#save")).toBeDisabled();
+  });
+
+  test("恢复划词默认关闭，勾选后立即保存且不要求重测连接", async ({ extension }) => {
+    const page = await openOptionsPage(extension.context, extension.extensionId);
+    await page.locator("#base-url").fill(`${FAKE_API_BASE}/v1`);
+    await page.locator("#api-key").fill("sk-e2e");
+    await page.locator("#model").fill("fake-model");
+    await page.locator("#test-connection").click();
+    await expect(page.locator("#status")).toContainText("连接测试成功");
+    await page.locator("#save").click();
+    await expect(page.locator("#status")).toContainText("配置已保存");
+
+    await page.locator("#restore-selection").check();
+    await expect(page.locator("#status")).toContainText("已保存划词设置");
+    await expect(page.locator("#save")).toBeEnabled();
+
+    await page.reload();
+    await expect(page.locator("#restore-selection")).toBeChecked();
   });
 });

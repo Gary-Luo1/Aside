@@ -1,6 +1,7 @@
 import type { AiConfig } from "./messages";
 
 export const CONFIG_STORAGE_KEY = "aiConfig";
+export const RESTORE_SELECTION_STORAGE_KEY = "restoreSelection";
 
 /**
  * 规范化 Base URL：去尾斜杠，只允许 https；
@@ -65,7 +66,6 @@ export function validateConfig(raw: unknown): ConfigValidationResult {
       baseUrl,
       apiKey,
       model,
-      restoreSelection: true,
     },
   };
 }
@@ -102,6 +102,25 @@ export async function saveConfig(config: AiConfig): Promise<void> {
 
 export async function deleteConfig(): Promise<void> {
   await chrome.storage.local.remove(CONFIG_STORAGE_KEY);
+}
+
+/** 恢复划词默认关闭；旧配置里嵌在 aiConfig 的 true 会迁移到独立键。 */
+export async function loadRestoreSelection(): Promise<boolean> {
+  const data = await chrome.storage.local.get([RESTORE_SELECTION_STORAGE_KEY, CONFIG_STORAGE_KEY]);
+  const dedicated = data[RESTORE_SELECTION_STORAGE_KEY];
+  if (typeof dedicated === "boolean") return dedicated;
+
+  const raw = data[CONFIG_STORAGE_KEY];
+  const migrated =
+    typeof raw === "object" &&
+    raw !== null &&
+    (raw as { restoreSelection?: unknown }).restoreSelection === true;
+  await chrome.storage.local.set({ [RESTORE_SELECTION_STORAGE_KEY]: migrated });
+  return migrated;
+}
+
+export async function saveRestoreSelection(enabled: boolean): Promise<void> {
+  await chrome.storage.local.set({ [RESTORE_SELECTION_STORAGE_KEY]: enabled });
 }
 
 /**

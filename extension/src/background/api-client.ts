@@ -1,5 +1,6 @@
 import type { AiConfig, Explanation, ExtensionError } from "../shared/messages";
 import { parseExplanation } from "../shared/explanation";
+import { hasHostPermission, hostPermissionError } from "../shared/host-permission";
 import { SYSTEM_PROMPT, buildConfigTestPrompt, buildUserPrompt } from "./prompt";
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
@@ -43,6 +44,11 @@ async function requestChatCompletion(
     : controller.signal;
 
   try {
+    const allowed = await hasHostPermission(config.baseUrl);
+    if (!allowed) {
+      return { ok: false, error: hostPermissionError() };
+    }
+
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: "POST",
       signal,

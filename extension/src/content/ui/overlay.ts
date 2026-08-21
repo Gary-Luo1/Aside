@@ -2,6 +2,8 @@ import type { Explanation, ExtensionError } from "../../shared/messages";
 import { computePlacement, type RectLike } from "../position-card";
 import type { UiState } from "../session";
 import styles from "./styles.css";
+import gochiHand from "../../../public/fonts/gochi-hand.woff2";
+import { isTrustedOverlayClick } from "./trusted-click";
 
 /** 单状态渲染所需的数据与回调；由会话控制器按状态组装。 */
 export interface RenderData {
@@ -24,7 +26,7 @@ export interface OverlayApi {
   containsNode(node: Node | null): boolean;
 }
 
-/** 页面内解释 UI：Shadow DOM 隔离，所有模型输出以 textContent 渲染。 */
+/** 页面内解释 UI：closed Shadow DOM 隔离，所有模型输出以 textContent 渲染。 */
 export class ExplanationOverlay implements OverlayApi {
   readonly host: HTMLDivElement;
   readonly shadowRoot: ShadowRoot;
@@ -37,10 +39,10 @@ export class ExplanationOverlay implements OverlayApi {
     this.host.id = "i-am-fine-overlay";
     this.host.style.cssText =
       "all:initial; position:fixed; left:0; top:0; width:0; height:0; z-index:2147483647;";
-    this.shadowRoot = this.host.attachShadow({ mode: "open" });
+    // closed：页面 JS 不能通过 host.shadowRoot 读取解释或点击入口。
+    this.shadowRoot = this.host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    const gochiUrl = chrome.runtime.getURL("public/fonts/gochi-hand.woff2");
-    style.textContent = `@font-face{font-family:"Gochi Hand";font-style:normal;font-weight:400;font-display:swap;src:url("${gochiUrl}") format("woff2");}${styles}`;
+    style.textContent = `@font-face{font-family:"Gochi Hand";font-style:normal;font-weight:400;font-display:swap;src:url("${gochiHand}") format("woff2");}${styles}`;
     this.shadowRoot.appendChild(style);
     const filters = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     filters.setAttribute("aria-hidden", "true");
@@ -74,6 +76,7 @@ export class ExplanationOverlay implements OverlayApi {
 
   render(state: UiState, data: RenderData): void {
     this.clear();
+    this.host.dataset.state = state;
     this.anchorRect = data.anchor;
     switch (state) {
       case "ready":
@@ -98,6 +101,7 @@ export class ExplanationOverlay implements OverlayApi {
 
   close(): void {
     this.clear();
+    delete this.host.dataset.state;
     this.host.style.display = "none"; // 关闭后不留下可见节点
   }
 
@@ -109,10 +113,10 @@ export class ExplanationOverlay implements OverlayApi {
     trigger.textContent = "解释这个词";
     // 在 window 捕获阶段处理点击：即便页面在 document 捕获阶段阻止了事件传播，
     // 入口点击仍能触发解释；键盘激活（Enter/Space）同样产生 click，兼容保留。
+    // 只接受真实用户手势，拒绝页面脚本的 HTMLElement.click()。
     this.triggerClickHandler = (event) => {
-      if (event.composedPath().includes(trigger)) {
-        data.onExplain?.(data.term);
-      }
+      if (!isTrustedOverlayClick(event, trigger, this.host)) return;
+      data.onExplain?.(data.term);
     };
     window.addEventListener("click", this.triggerClickHandler, true);
     this.shadowRoot.appendChild(trigger);
@@ -190,7 +194,7 @@ export class ExplanationOverlay implements OverlayApi {
     const actions = document.createElement("div");
     actions.className = "error-actions";
 
-    if (data.error?.code === "unconfigured") {
+    if (data.error?.code === "unconfigured" || data.error?.code === "host_permission") {
       const openOptions = document.createElement("button");
       openOptions.type = "button";
       openOptions.className = "action-button primary";
@@ -259,7 +263,8 @@ export class ExplanationOverlay implements OverlayApi {
     const footer = document.createElement("footer");
     footer.className = "card-footer";
     const caveat = document.createElement("p");
-    caveat.textContent = "AI 生成内容可能不准确，重要信息请进一步核对。";
+    caveat.textContent =
+      "每次解释会向你配置的接口请求一次，费用由该厂商收取。AI 生成内容可能不准确，重要信息请进一步核对。";
     footer.append(caveat);
 
     card.append(header, body, footer);

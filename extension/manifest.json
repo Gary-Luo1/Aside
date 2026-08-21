@@ -1,11 +1,23 @@
 {
   "manifest_version": 3,
   "name": "Aside",
-  "version": "0.1.0",
-  "description": "选中术语，在原页旁注专业与通俗两层解释。",
+  "version": "0.2.0",
+  "description": "选中术语，在原页旁注专业与通俗两层解释。使用你自己配置的 OpenAI 兼容接口。",
+  "homepage_url": "https://github.com/Gary-Luo1/i-am-fine",
   "minimum_chrome_version": "116",
+  "icons": {
+    "16": "public/icons/icon16.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png"
+  },
   "permissions": ["storage"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "http://127.0.0.1:*/*",
+    "http://localhost:*/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -23,12 +35,11 @@
     "open_in_tab": true
   },
   "action": {
-    "default_title": "Aside 设置"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["public/fonts/*"],
-      "matches": ["http://*/*", "https://*/*"]
+    "default_title": "Aside 设置",
+    "default_icon": {
+      "16": "public/icons/icon16.png",
+      "48": "public/icons/icon48.png",
+      "128": "public/icons/icon128.png"
     }
-  ]
+  }
 }

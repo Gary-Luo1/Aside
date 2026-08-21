@@ -1,13 +1,20 @@
 import path from "node:path";
+import { mkdtemp, cp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import {
   chromium,
   expect,
   test as base,
   type BrowserContext,
   type Frame,
-  type Locator,
   type Page,
 } from "@playwright/test";
+import {
+  clickOverlayButton,
+  expectOverlayButtonVisible,
+  expectOverlayDialogText,
+  expectOverlayDialogVisible,
+} from "./overlay-cdp";
 
 export const EXTENSION_PATH = path.resolve(__dirname, "../../dist");
 export const FAKE_API_BASE = "http://127.0.0.1:8787";
@@ -19,12 +26,15 @@ export interface ExtensionFixture {
 
 export const test = base.extend<{ extension: ExtensionFixture }>({
   extension: async ({}, use) => {
+    const loadedPath = await extensionPathForTest();
     const context = await chromium.launchPersistentContext("", {
       channel: "chromium",
+      // 完整 Chrome + headless=new：扩展需要完整内核，但不能弹出窗口抢桌面。
       headless: false,
       args: [
-        `--disable-extensions-except=${EXTENSION_PATH}`,
-        `--load-extension=${EXTENSION_PATH}`,
+        "--headless=new",
+        `--disable-extensions-except=${loadedPath}`,
+        `--load-extension=${loadedPath}`,
       ],
     });
     let worker = context.serviceWorkers()[0];
@@ -36,6 +46,19 @@ export const test = base.extend<{ extension: ExtensionFixture }>({
     await context.close();
   },
 });
+
+/** E2E 把本地 fake API 写成必选 host 权限，避免 chrome.permissions 系统提示卡住无头流程。 */
+async function extensionPathForTest(): Promise<string> {
+  const dir = await mkdtemp(path.join(tmpdir(), "aside-e2e-"));
+  await cp(EXTENSION_PATH, dir, { recursive: true });
+  const manifestPath = path.join(dir, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
+    host_permissions?: string[];
+  };
+  manifest.host_permissions = ["http://127.0.0.1:*/*", "http://localhost:*/*"];
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  return dir;
+}
 
 export async function openOptionsPage(
   context: BrowserContext,
@@ -50,7 +73,7 @@ export async function openOptionsPage(
 export async function configureAndSave(
   context: BrowserContext,
   extensionId: string,
-  config: { baseUrl?: string; apiKey?: string; model?: string } = {},
+  config: { baseUrl?: string; apiKey?: string; model?: string; restoreSelection?: boolean } = {},
 ): Promise<void> {
   const page = await openOptionsPage(context, extensionId);
   const baseUrl = config.baseUrl ?? `${FAKE_API_BASE}/v1`;
@@ -64,6 +87,10 @@ export async function configureAndSave(
   await expect(page.locator("#status")).toContainText("连接测试成功");
   await page.locator("#save").click();
   await expect(page.locator("#status")).toContainText("配置已保存");
+  if (config.restoreSelection) {
+    await page.locator("#restore-selection").check();
+    await expect(page.locator("#status")).toContainText("已保存划词设置");
+  }
   await page.close();
 }
 
@@ -96,21 +123,20 @@ export async function openExplanationCard(
   viewport: { width: number; height: number },
   term: string,
   options: { configure?: boolean; settleMs?: number } = {},
-): Promise<{ page: Page; dialog: Locator }> {
+): Promise<{ page: Page }> {
   if (options.configure !== false) {
     await configureAndSave(context, extensionId);
   }
   const page = await openTutorialPage(context);
   await page.setViewportSize(viewport);
   await selectText(page, term);
-  await page.getByRole("button", { name: "解释这个词" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText("专业解释");
+  await clickOverlayButton(page, "解释这个词");
+  await expectOverlayDialogVisible(page);
+  await expectOverlayDialogText(page, "专业解释");
   if (options.settleMs) {
     await page.waitForTimeout(options.settleMs);
   }
-  return { page, dialog };
+  return { page };
 }
 
 /** 用 Range 选中页面中的目标文本并触发 selectionchange。 */

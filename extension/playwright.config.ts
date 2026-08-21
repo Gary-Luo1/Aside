@@ -7,7 +7,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    headless: false,
+    headless: true,
     channel: "chromium",
   },
   webServer: {

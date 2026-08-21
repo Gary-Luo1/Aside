@@ -12,7 +12,7 @@ const common = {
   minify: false,
   target: ["chrome116"],
   logLevel: "info",
-  loader: { ".css": "text" },
+  loader: { ".css": "text", ".woff2": "dataurl" },
 };
 
 await rm(dist, { recursive: true, force: true });
