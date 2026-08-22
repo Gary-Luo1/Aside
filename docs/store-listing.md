@@ -9,7 +9,7 @@ https://github.com/Gary-Luo1/i-am-fine/blob/main/docs/privacy.md
 
 | 权限 | 为什么需要 | 如何最小使用 |
 |---|---|---|
-| `storage` | 在本机保存用户填写的 Base URL、API Key、Model 和「恢复划词」开关 | 仅扩展受信任上下文可读；内容脚本读不到密钥 |
+| `storage` | 在本机保存用户填写的接口地址、密钥和模型名称 | 仅扩展受信任上下文可读；内容脚本读不到密钥 |
 | `optional_host_permissions`（https 与本机 http） | 后台要把解释请求发到用户填写的接口 | 安装时不授权任何网站。用户点击「测试连接」时，只申请该 Base URL 的 origin |
 | 内容脚本匹配 `http(s)://*/*` | 在任意普通教程页感知划词 | 不扫描整页、不读取 URL/标题；选区出现前不创建卡片宿主；卡片字体不走 web_accessible_resources |
 

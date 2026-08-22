@@ -209,10 +209,96 @@ describe("SelectionSession 决策矩阵", () => {
     expect(outcome).toEqual({ action: "show-ready", term: "X", anchor: expect.any(Object) });
   });
 
-  it("新选词作废旧请求结果", () => {
+  it("解释卡片内划词显示继续解释入口，不关掉当前卡片", () => {
     const session = makeSession();
-    const { seq } = session.on({ kind: "explain-requested", term: "API" }) as { seq: number };
-    session.on({ kind: "selection-changed", selection: snapshot({ text: "算法" }) });
-    expect(session.on({ kind: "explain-settled", seq, result: successResult })).toEqual({ action: "none" });
+    const started = session.on({ kind: "explain-requested", term: "API" });
+    const seq = (started as { seq: number }).seq;
+    session.on({ kind: "explain-settled", seq, result: successResult });
+    expect(session.state).toBe("success");
+
+    const inCard = snapshot({ text: "约定", fromOverlay: true });
+    session.on({ kind: "pointer-down", insideOverlay: true, selection: collapsed() });
+    const outcome = session.on({ kind: "pointer-up", insideOverlay: true, selection: inCard });
+    expect(outcome).toEqual({ action: "show-followup", term: "约定", anchor: expect.any(Object) });
+    expect(session.state).toBe("success");
+    expect(session.term).toBe("API");
+  });
+
+  it("解释卡片内折叠选区只收起继续解释入口", () => {
+    const session = makeSession();
+    const started = session.on({ kind: "explain-requested", term: "API" });
+    const seq = (started as { seq: number }).seq;
+    session.on({ kind: "explain-settled", seq, result: successResult });
+
+    session.on({
+      kind: "selection-changed",
+      selection: snapshot({ text: "约定", fromOverlay: true }),
+    });
+    expect(session.on({ kind: "selection-changed", selection: { ...collapsed(), fromOverlay: true } })).toEqual({
+      action: "hide-followup",
+    });
+    expect(session.state).toBe("success");
+  });
+
+  it("解释展示时页面上的原选区不覆盖卡片", () => {
+    const session = makeSession();
+    const started = session.on({ kind: "explain-requested", term: "API" });
+    const seq = (started as { seq: number }).seq;
+    session.on({ kind: "explain-settled", seq, result: successResult });
+    expect(session.on({ kind: "selection-changed", selection: snapshot({ text: "API" }) })).toEqual({
+      action: "none",
+    });
+    expect(session.state).toBe("success");
+  });
+
+  it("解释展示时页面再划当前词不关卡，点空白才关", () => {
+    const session = makeSession();
+    const started = session.on({ kind: "explain-requested", term: "API" });
+    const seq = (started as { seq: number }).seq;
+    session.on({ kind: "explain-settled", seq, result: successResult });
+
+    expect(session.on({ kind: "pointer-down", insideOverlay: false, selection: snapshot() })).toEqual({
+      action: "none",
+    });
+    expect(session.state).toBe("success");
+    expect(session.on({ kind: "pointer-up", insideOverlay: false, selection: snapshot() })).toEqual({
+      action: "none",
+    });
+    expect(session.state).toBe("success");
+
+    session.on({ kind: "pointer-down", insideOverlay: false, selection: snapshot() });
+    expect(session.on({ kind: "pointer-up", insideOverlay: false, selection: collapsed() })).toEqual({
+      action: "close",
+    });
+    expect(session.state).toBe("idle");
+  });
+
+  it("解释展示时在页面另选新词则换入口", () => {
+    const session = makeSession();
+    const started = session.on({ kind: "explain-requested", term: "API" });
+    const seq = (started as { seq: number }).seq;
+    session.on({ kind: "explain-settled", seq, result: successResult });
+    expect(session.on({ kind: "selection-changed", selection: snapshot({ text: "数据库" }) })).toEqual({
+      action: "show-ready",
+      term: "数据库",
+      anchor: expect.any(Object),
+    });
+    expect(session.state).toBe("ready");
+  });
+
+  it("解释展示时页面拖选新词在松手后换入口", () => {
+    const session = makeSession();
+    const started = session.on({ kind: "explain-requested", term: "API" });
+    const seq = (started as { seq: number }).seq;
+    session.on({ kind: "explain-settled", seq, result: successResult });
+    expect(session.on({ kind: "pointer-down", insideOverlay: false, selection: snapshot() })).toEqual({
+      action: "none",
+    });
+    expect(session.on({ kind: "pointer-up", insideOverlay: false, selection: snapshot({ text: "数据库" }) })).toEqual({
+      action: "show-ready",
+      term: "数据库",
+      anchor: expect.any(Object),
+    });
+    expect(session.state).toBe("ready");
   });
 });

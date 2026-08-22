@@ -434,25 +434,6 @@ button:disabled {
   color: var(--blue);
 }
 
-.toggle {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  color: var(--ink-soft);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.toggle input {
-  width: 20px;
-  height: 20px;
-  margin-top: 3px;
-  padding: 0;
-  flex: 0 0 auto;
-  accent-color: var(--green);
-  filter: none;
-}
-
 @media (max-width: 520px) {
   .page {
     width: calc(100% - 24px);

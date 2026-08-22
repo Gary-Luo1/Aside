@@ -18,6 +18,8 @@ export interface SelectionSnapshot extends Anchor {
   rangeCount: number;
   text: string;
   rect: RectLike | null;
+  /** 选区落在解释卡片正文内时为 true，用于卡片内继续划词。 */
+  fromOverlay?: boolean;
 }
 
 /**
@@ -44,6 +46,8 @@ export type SessionOutcome =
   | { action: "close" }
   | { action: "show-hint"; message: string; anchor: RectLike }
   | { action: "show-ready"; term: string; anchor: RectLike }
+  | { action: "show-followup"; term: string; anchor: RectLike }
+  | { action: "hide-followup" }
   | { action: "start-explain"; seq: number; term: string }
   | {
       action: "finish-explain";
@@ -124,6 +128,7 @@ export class SelectionSession {
         return this.syncFromSelection(event.selection);
       case "overlay-click":
         this.suppressCollapseClose = false;
+        this.dragging = false;
         return { action: "none" };
       case "escape":
         return this.uiState === "idle" ? { action: "none" } : this.closeOutcome();
@@ -152,10 +157,17 @@ export class SelectionSession {
   private onPointerDown(insideOverlay: boolean, selection: SelectionSnapshot | null): SessionOutcome {
     if (insideOverlay) {
       this.suppressCollapseClose = true;
+      this.dragging = true;
       this.before = selection;
       return { action: "none" };
     }
     this.suppressCollapseClose = false;
+    // success 等到松手再决定：再划当前词要留卡，点空白才关。ready/hint/loading/error 仍按下即关。
+    if (this.uiState === "success") {
+      this.dragging = true;
+      this.before = selection;
+      return { action: "none" };
+    }
     const closed = this.uiState === "idle" ? { action: "none" as const } : this.closeOutcome();
     this.dragging = true;
     // 快照在 close 之后记录（close 会清空 before），与「点击空白处不重弹」语义一致。
@@ -165,14 +177,28 @@ export class SelectionSession {
 
   private onPointerUp(insideOverlay: boolean, selection: SelectionSnapshot | null): SessionOutcome {
     this.dragging = false;
-    if (insideOverlay) {
-      this.before = null;
-      return { action: "none" };
-    }
     const before = this.before;
     this.before = null;
+    if (insideOverlay) {
+      if (
+        this.uiState === "success" &&
+        selection &&
+        !selection.collapsed &&
+        selection.text.length > 0 &&
+        (before === null || !this.sameSelection(before, selection))
+      ) {
+        return this.syncFromSelection(selection);
+      }
+      return { action: "none" };
+    }
+    if (this.uiState === "success") {
+      if (selection && !selection.collapsed && selection.text.length > 0) {
+        return this.syncFromSelection(selection);
+      }
+      return this.closeOutcome();
+    }
     if (before !== null && selection !== null && this.sameSelection(before, selection)) {
-      return { action: "none" }; // 点击空白处后选区未变，不重新弹出
+      return { action: "none" };
     }
     return this.syncFromSelection(selection);
   }
@@ -184,10 +210,20 @@ export class SelectionSession {
     }
 
     if (selection.collapsed || selection.rangeCount === 0 || selection.text.length === 0) {
+      if (this.uiState === "success" && selection.fromOverlay) {
+        return { action: "hide-followup" };
+      }
       if ((this.uiState === "ready" || this.uiState === "hint") && !this.suppressCollapseClose) {
         return this.closeOutcome();
       }
       return { action: "none" };
+    }
+
+    if (this.uiState === "success" && !selection.fromOverlay) {
+      const pageTerm = this.sanitizeTermFn(selection.text);
+      if (pageTerm === this.currentTerm) {
+        return { action: "none" };
+      }
     }
 
     if (selection.rect === null) return { action: "none" };
@@ -198,12 +234,18 @@ export class SelectionSession {
         if (this.uiState === "ready" || this.uiState === "hint") {
           return this.closeOutcome();
         }
+        if (this.uiState === "success" && selection.fromOverlay) {
+          return { action: "hide-followup" };
+        }
         return { action: "none" };
+      }
+      if (this.uiState === "success" && selection.fromOverlay) {
+        return { action: "hide-followup" };
       }
       return this.showHintOutcome(selection.rect);
     }
 
-    return this.showReadyOutcome(term, selection.rect);
+    return this.showReadyOutcome(term, selection.rect, selection.fromOverlay === true);
   }
 
   private onExplainSettled(seq: number, result: ExplainResult): SessionOutcome {
@@ -226,7 +268,10 @@ export class SelectionSession {
     return { action: "show-hint", message: HINT_MESSAGE, anchor: rect };
   }
 
-  private showReadyOutcome(term: string, rect: RectLike): SessionOutcome {
+  private showReadyOutcome(term: string, rect: RectLike, fromOverlay = false): SessionOutcome {
+    if (this.uiState === "success" && fromOverlay) {
+      return { action: "show-followup", term, anchor: rect };
+    }
     this.seq += 1; // 新选词作废旧请求结果
     this.uiState = "ready";
     this.currentTerm = term;

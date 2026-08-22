@@ -3,8 +3,6 @@ export interface AiConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
-  /** 旧存储可能仍带此字段；运行时以独立的 restoreSelection 键为准。 */
-  restoreSelection?: boolean;
 }
 
 /** 双层解释结果。 */
@@ -39,17 +37,12 @@ export interface ExtensionError {
 export const MESSAGE_TYPES = {
   CONFIG_TEST_REQUEST: "CONFIG_TEST_REQUEST",
   EXPLAIN_TERM_REQUEST: "EXPLAIN_TERM_REQUEST",
-  GET_SETTINGS_REQUEST: "GET_SETTINGS_REQUEST",
-  RESTORE_SELECTION_CHANGED: "RESTORE_SELECTION_CHANGED",
 } as const;
 
 /** content/options → 后台 的请求；载荷在后台可信边界重新校验。 */
 export type RuntimeRequest =
   | { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig }
-  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string }
-  | { type: typeof MESSAGE_TYPES.GET_SETTINGS_REQUEST };
-
-export type SettingsResult = { ok: true; restoreSelection: boolean };
+  | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string };
 
 /** 后台对解释请求的稳定响应。 */
 export type ExplainResult =
@@ -75,22 +68,6 @@ export function isConfigTestRequest(
   value: unknown,
 ): value is { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig } {
   return isRecord(value) && value.type === MESSAGE_TYPES.CONFIG_TEST_REQUEST && isRecord(value.config);
-}
-
-export function isGetSettingsRequest(
-  value: unknown,
-): value is { type: typeof MESSAGE_TYPES.GET_SETTINGS_REQUEST } {
-  return isRecord(value) && value.type === MESSAGE_TYPES.GET_SETTINGS_REQUEST;
-}
-
-export function isRestoreSelectionChangedMessage(
-  value: unknown,
-): value is { type: typeof MESSAGE_TYPES.RESTORE_SELECTION_CHANGED; restoreSelection: boolean } {
-  return (
-    isRecord(value) &&
-    value.type === MESSAGE_TYPES.RESTORE_SELECTION_CHANGED &&
-    typeof value.restoreSelection === "boolean"
-  );
 }
 
 // —— 响应守卫：助手函数校验真实回包形状，不再靠强转 ——
@@ -135,14 +112,6 @@ export async function requestExplainTerm(term: string): Promise<ExplainResult> {
 export async function requestConfigTest(config: AiConfig): Promise<ConfigTestResult> {
   const response = await send({ type: MESSAGE_TYPES.CONFIG_TEST_REQUEST, config });
   return isConfigTestResult(response) ? response : { ok: false, error: unexpected() };
-}
-
-export async function requestSettings(): Promise<SettingsResult> {
-  const response = await send({ type: MESSAGE_TYPES.GET_SETTINGS_REQUEST });
-  if (isRecord(response) && response.ok === true && typeof response.restoreSelection === "boolean") {
-    return { ok: true, restoreSelection: response.restoreSelection };
-  }
-  return { ok: true, restoreSelection: false };
 }
 
 // —— 发送方授权规则：与契约同住 ——

@@ -7,6 +7,7 @@ import {
   type SelectionSnapshot,
   type SessionOutcome,
 } from "./session";
+import { pickSelectionSnapshot } from "./selection-snapshot";
 import { ExplanationOverlay, type OverlayApi, type RenderData } from "./ui/overlay";
 
 /**
@@ -57,9 +58,7 @@ export class SelectionController {
   }
 
   private handleSelectionChange(): void {
-    const snapshot = this.snapshotSelection();
-    if (snapshot?.anchorNode && this.overlayContainsNode(snapshot.anchorNode)) return;
-    this.apply(this.session.on({ kind: "selection-changed", selection: snapshot }));
+    this.apply(this.session.on({ kind: "selection-changed", selection: this.snapshotSelection() }));
   }
 
   private handlePointerDown(event: PointerEvent): void {
@@ -73,13 +72,11 @@ export class SelectionController {
   }
 
   private handlePointerUp(event: PointerEvent): void {
-    const snapshot = this.snapshotSelection();
-    if (snapshot?.anchorNode && this.overlayContainsNode(snapshot.anchorNode)) return;
     this.apply(
       this.session.on({
         kind: "pointer-up",
         insideOverlay: this.overlayContainsEvent(event),
-        selection: snapshot,
+        selection: this.snapshotSelection(),
       }),
     );
   }
@@ -101,6 +98,14 @@ export class SelectionController {
   }
 
   private snapshotSelection(): SelectionSnapshot | null {
+    return pickSelectionSnapshot(
+      this.overlay?.readExplainSelection() ?? null,
+      this.snapshotWindowSelection(),
+      (node) => this.overlayContainsNode(node),
+    );
+  }
+
+  private snapshotWindowSelection(): SelectionSnapshot | null {
     const selection = window.getSelection();
     if (!selection) return null;
     const anchorNode = selection.anchorNode;
@@ -186,6 +191,12 @@ export class SelectionController {
           anchor: outcome.anchor,
           onExplain: (term) => this.explain(term),
         });
+        return;
+      case "show-followup":
+        this.ensureOverlay().showFollowup(outcome.term, outcome.anchor, (term) => this.explain(term));
+        return;
+      case "hide-followup":
+        this.overlay?.hideFollowup();
         return;
       case "start-explain": {
         this.ensureOverlay().render("loading", {

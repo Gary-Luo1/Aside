@@ -73,7 +73,7 @@ export async function openOptionsPage(
 export async function configureAndSave(
   context: BrowserContext,
   extensionId: string,
-  config: { baseUrl?: string; apiKey?: string; model?: string; restoreSelection?: boolean } = {},
+  config: { baseUrl?: string; apiKey?: string; model?: string } = {},
 ): Promise<void> {
   const page = await openOptionsPage(context, extensionId);
   const baseUrl = config.baseUrl ?? `${FAKE_API_BASE}/v1`;
@@ -87,10 +87,6 @@ export async function configureAndSave(
   await expect(page.locator("#status")).toContainText("连接测试成功");
   await page.locator("#save").click();
   await expect(page.locator("#status")).toContainText("配置已保存");
-  if (config.restoreSelection) {
-    await page.locator("#restore-selection").check();
-    await expect(page.locator("#status")).toContainText("已保存划词设置");
-  }
   await page.close();
 }
 

@@ -13,21 +13,27 @@ const SELECTABLE_ATTR = "data-iam-fine-selectable";
 export class ProtectedSelectionRestorer {
   private attached = false;
   private readonly onPointerDown = (event: PointerEvent) => this.handlePointerDown(event);
+  private readonly onPointerEnd = () => {
+    // 等本次 pointerup 冒泡结束再摘掉标记，避免 user-select 立刻改回 none 把刚完成的选区清掉。
+    window.setTimeout(() => this.clearSelectableMarks(), 0);
+  };
 
   attach(): void {
     if (this.attached) return;
     document.addEventListener("pointerdown", this.onPointerDown, true);
+    document.addEventListener("pointerup", this.onPointerEnd, true);
+    document.addEventListener("pointercancel", this.onPointerEnd, true);
     this.attached = true;
   }
 
   detach(): void {
     if (!this.attached) return;
     document.removeEventListener("pointerdown", this.onPointerDown, true);
+    document.removeEventListener("pointerup", this.onPointerEnd, true);
+    document.removeEventListener("pointercancel", this.onPointerEnd, true);
     this.attached = false;
     document.getElementById(STYLE_ID)?.remove();
-    for (const el of document.querySelectorAll(`[${SELECTABLE_ATTR}]`)) {
-      el.removeAttribute(SELECTABLE_ATTR);
-    }
+    this.clearSelectableMarks();
   }
 
   private handlePointerDown(event: PointerEvent): void {
@@ -43,6 +49,12 @@ export class ProtectedSelectionRestorer {
 
     this.ensureStyle();
     region.setAttribute(SELECTABLE_ATTR, "");
+  }
+
+  private clearSelectableMarks(): void {
+    for (const el of document.querySelectorAll(`[${SELECTABLE_ATTR}]`)) {
+      el.removeAttribute(SELECTABLE_ATTR);
+    }
   }
 
   private isInteractive(element: Element): boolean {

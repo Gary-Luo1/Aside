@@ -1,6 +1,6 @@
 import type { Explanation, ExtensionError } from "../../shared/messages";
 import { computePlacement, type RectLike } from "../position-card";
-import type { UiState } from "../session";
+import type { SelectionSnapshot, UiState } from "../session";
 import styles from "./styles.css";
 import gochiHand from "../../../public/fonts/gochi-hand.woff2";
 import { isTrustedOverlayClick } from "./trusted-click";
@@ -24,6 +24,9 @@ export interface OverlayApi {
   close(): void;
   containsEvent(event: Event): boolean;
   containsNode(node: Node | null): boolean;
+  readExplainSelection(): SelectionSnapshot | null;
+  showFollowup(term: string, anchor: RectLike, onExplain: (term: string) => void): void;
+  hideFollowup(): void;
 }
 
 /** 页面内解释 UI：closed Shadow DOM 隔离，所有模型输出以 textContent 渲染。 */
@@ -32,7 +35,8 @@ export class ExplanationOverlay implements OverlayApi {
   readonly shadowRoot: ShadowRoot;
   private cardElement: HTMLElement | null = null;
   private anchorRect: RectLike | null = null;
-  private triggerClickHandler: ((event: Event) => void) | null = null;
+  private readyClickHandler: ((event: Event) => void) | null = null;
+  private followupClickHandler: ((event: Event) => void) | null = null;
 
   constructor() {
     this.host = document.createElement("div");
@@ -72,6 +76,38 @@ export class ExplanationOverlay implements OverlayApi {
 
   containsNode(node: Node | null): boolean {
     return node !== null && (this.host === node || this.shadowRoot === node.getRootNode());
+  }
+
+  /** 只读取解释正文里的选区，避免标题/页脚误触发继续解释。 */
+  readExplainSelection(): SelectionSnapshot | null {
+    const root = this.shadowRoot as ShadowRoot & { getSelection?: () => Selection | null };
+    const shadowSel = root.getSelection?.() ?? null;
+    const candidate =
+      shadowSel && (shadowSel.rangeCount > 0 || Boolean(shadowSel.anchorNode))
+        ? shadowSel
+        : window.getSelection();
+    if (!candidate) return null;
+    const anchorNode = candidate.anchorNode;
+    if (!anchorNode || !this.containsNode(anchorNode) || !this.isExplainBodyNode(anchorNode)) {
+      return null;
+    }
+    return this.snapshotFrom(candidate, true);
+  }
+
+  showFollowup(term: string, anchor: RectLike, onExplain: (term: string) => void): void {
+    this.hideFollowup();
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "trigger followup";
+    trigger.textContent = "解释这个词";
+    this.bindTriggerClick("followup", trigger, () => onExplain(term));
+    this.shadowRoot.appendChild(trigger);
+    this.placeFollowup(trigger, anchor);
+  }
+
+  hideFollowup(): void {
+    this.unbindTriggerClick("followup");
+    this.shadowRoot.querySelectorAll(".trigger.followup").forEach((el) => el.remove());
   }
 
   render(state: UiState, data: RenderData): void {
@@ -114,11 +150,7 @@ export class ExplanationOverlay implements OverlayApi {
     // 在 window 捕获阶段处理点击：即便页面在 document 捕获阶段阻止了事件传播，
     // 入口点击仍能触发解释；键盘激活（Enter/Space）同样产生 click，兼容保留。
     // 只接受真实用户手势，拒绝页面脚本的 HTMLElement.click()。
-    this.triggerClickHandler = (event) => {
-      if (!isTrustedOverlayClick(event, trigger, this.host)) return;
-      data.onExplain?.(data.term);
-    };
-    window.addEventListener("click", this.triggerClickHandler, true);
+    this.bindTriggerClick("ready", trigger, () => data.onExplain?.(data.term));
     this.shadowRoot.appendChild(trigger);
     this.place(trigger, data.anchor);
   }
@@ -292,6 +324,47 @@ export class ExplanationOverlay implements OverlayApi {
     return column;
   }
 
+  private isExplainBodyNode(node: Node): boolean {
+    const el = node instanceof Element ? node : node.parentElement;
+    return Boolean(el?.closest(".col p"));
+  }
+
+  private snapshotFrom(selection: Selection, fromOverlay: boolean): SelectionSnapshot {
+    const anchorNode = selection.anchorNode;
+    const anchorOffset = selection.anchorOffset;
+    const focusNode = selection.focusNode;
+    const focusOffset = selection.focusOffset;
+    if (selection.rangeCount === 0) {
+      return {
+        collapsed: true,
+        rangeCount: 0,
+        text: "",
+        anchorNode,
+        anchorOffset,
+        focusNode,
+        focusOffset,
+        rect: null,
+        fromOverlay,
+      };
+    }
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    return {
+      collapsed: selection.isCollapsed,
+      rangeCount: selection.rangeCount,
+      text: selection.toString(),
+      anchorNode,
+      anchorOffset,
+      focusNode,
+      focusOffset,
+      fromOverlay,
+      rect:
+        rect.width === 0 && rect.height === 0
+          ? null
+          : { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+    };
+  }
+
   private finalize(card: HTMLElement, data: RenderData): void {
     this.cardElement = card;
     this.shadowRoot.appendChild(card);
@@ -318,13 +391,89 @@ export class ExplanationOverlay implements OverlayApi {
     element.style.top = `${placement.top}px`;
   }
 
-  private clear(): void {
-    if (this.triggerClickHandler) {
-      window.removeEventListener("click", this.triggerClickHandler, true);
-      this.triggerClickHandler = null;
+  /** 继续解释入口避开关闭/展开，避免叠在控件上却被点成新解释。 */
+  private placeFollowup(trigger: HTMLElement, anchor: RectLike): void {
+    this.place(trigger, anchor);
+    const blockers = [...this.shadowRoot.querySelectorAll<HTMLElement>(".close, .expand")].filter(
+      (el) => !el.hidden,
+    );
+    if (blockers.length === 0) return;
+
+    const originLeft = Number.parseFloat(trigger.style.left);
+    const originTop = Number.parseFloat(trigger.style.top);
+    if (!Number.isFinite(originLeft) || !Number.isFinite(originTop)) return;
+
+    const offsets: Array<[number, number]> = [
+      [0, 0],
+      [0, -52],
+      [0, 52],
+      [-180, 0],
+      [180, 0],
+      [-180, -52],
+      [180, -52],
+      [0, -104],
+      [0, 104],
+    ];
+    for (const [dx, dy] of offsets) {
+      trigger.style.left = `${originLeft + dx}px`;
+      trigger.style.top = `${originTop + dy}px`;
+      const box = trigger.getBoundingClientRect();
+      const inView =
+        box.left >= 8 &&
+        box.top >= 8 &&
+        box.right <= window.innerWidth - 8 &&
+        box.bottom <= window.innerHeight - 8;
+      const hits = blockers.some((el) => rectsOverlap(box, el.getBoundingClientRect(), 6));
+      if (inView && !hits) return;
     }
+    trigger.style.left = `${originLeft}px`;
+    trigger.style.top = `${originTop}px`;
+  }
+
+  private bindTriggerClick(
+    slot: "ready" | "followup",
+    trigger: HTMLElement,
+    onExplain: () => void,
+  ): void {
+    this.unbindTriggerClick(slot);
+    const handler = (event: Event) => {
+      if (
+        !isTrustedOverlayClick(event, trigger, {
+          host: this.host,
+          root: this.shadowRoot,
+        })
+      ) {
+        return;
+      }
+      onExplain();
+    };
+    if (slot === "ready") this.readyClickHandler = handler;
+    else this.followupClickHandler = handler;
+    window.addEventListener("click", handler, true);
+  }
+
+  private unbindTriggerClick(slot: "ready" | "followup"): void {
+    const handler = slot === "ready" ? this.readyClickHandler : this.followupClickHandler;
+    if (!handler) return;
+    window.removeEventListener("click", handler, true);
+    if (slot === "ready") this.readyClickHandler = null;
+    else this.followupClickHandler = null;
+  }
+
+  private clear(): void {
+    this.hideFollowup();
+    this.unbindTriggerClick("ready");
     this.cardElement = null;
     this.host.style.display = ""; // 渲染前恢复显示
     this.shadowRoot.querySelectorAll(".card, .trigger, .hint").forEach((el) => el.remove());
   }
+}
+
+function rectsOverlap(a: DOMRectReadOnly, b: DOMRectReadOnly, pad: number): boolean {
+  return !(
+    a.right < b.left - pad ||
+    a.left > b.right + pad ||
+    a.bottom < b.top - pad ||
+    a.top > b.bottom + pad
+  );
 }

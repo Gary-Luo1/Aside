@@ -6,7 +6,6 @@ import {
   getNamedFrame,
   lastFakeApiRequest,
   openFramesPage,
-  openOptionsPage,
   openTutorialPage,
   resetFakeApi,
   selectText,
@@ -218,6 +217,23 @@ test.describe("选词解释流程", () => {
     await expectOverlayDialogHidden(page);
   });
 
+  test("解释展示时再拖页面上的原词不关掉卡片", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await openTutorialPage(extension.context);
+
+    await selectText(page, "API");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "专业解释");
+
+    await dragSelectText(page, "API");
+    await expectOverlayDialogVisible(page);
+    await expectOverlayDialogText(page, "“API”");
+    await expectOverlayButtonHidden(page, "解释这个词");
+
+    await page.mouse.click(1400, 60);
+    await expectOverlayDialogHidden(page);
+  });
+
   test("关闭加载中的卡片后，慢请求完成不重新弹出", async ({ extension }) => {
     await configureAndSave(extension.context, extension.extensionId);
     const page = await openTutorialPage(extension.context);
@@ -339,7 +355,7 @@ test.describe("选词解释流程", () => {
   });
 
   test("受保护页面：禁止选择时仍可划词并解释", async ({ extension }) => {
-    await configureAndSave(extension.context, extension.extensionId, { restoreSelection: true });
+    await configureAndSave(extension.context, extension.extensionId);
     const page = await extension.context.newPage();
     await page.goto(`${FAKE_API_BASE}/protected.html`);
     await expect(page.locator("h1")).toContainText("受保护教程页");
@@ -351,22 +367,6 @@ test.describe("选词解释流程", () => {
     await expectOverlayButtonVisible(page, "解释这个词");
     await clickOverlayButton(page, "解释这个词");
     await expectOverlayDialogText(page, "专业解释");
-  });
-
-  test("恢复划词勾选后无需刷新已打开页面即可划词", async ({ extension }) => {
-    await configureAndSave(extension.context, extension.extensionId);
-    const page = await extension.context.newPage();
-    await page.goto(`${FAKE_API_BASE}/protected.html`);
-    await expect(page.locator("h1")).toContainText("受保护教程页");
-
-    const options = await openOptionsPage(extension.context, extension.extensionId);
-    await options.locator("#restore-selection").check();
-    await expect(options.locator("#status")).toContainText("已保存划词设置");
-    await options.close();
-
-    await page.bringToFront();
-    await dragSelectText(page, "加密");
-    await expectOverlayButtonVisible(page, "解释这个词");
   });
 
   test("点击入口时页面清空选区（飞书编辑器行为）仍能触发解释", async ({ extension }) => {

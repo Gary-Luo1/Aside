@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIG_STORAGE_KEY,
-  RESTORE_SELECTION_STORAGE_KEY,
+  LEGACY_RESTORE_SELECTION_STORAGE_KEY,
   deleteConfig,
+  dropLegacyRestoreSelectionSetting,
   loadConfig,
-  loadRestoreSelection,
   normalizeBaseUrl,
   restrictStorageAccessLevel,
   saveConfig,
-  saveRestoreSelection,
   validateConfig,
 } from "../../src/shared/config";
 import type { AiConfig } from "../../src/shared/messages";
@@ -179,18 +178,6 @@ describe("配置读取（loadConfig）", () => {
       expect(result.message).toContain("Base URL");
     }
   });
-
-  it("恢复划词独立存储，默认关闭，旧 aiConfig 中的 true 可迁移", async () => {
-    await expect(loadRestoreSelection()).resolves.toBe(false);
-
-    storage.data.set(CONFIG_STORAGE_KEY, { ...sampleConfig, restoreSelection: true });
-    storage.data.delete(RESTORE_SELECTION_STORAGE_KEY);
-    await expect(loadRestoreSelection()).resolves.toBe(true);
-    expect(storage.data.get(RESTORE_SELECTION_STORAGE_KEY)).toBe(true);
-
-    await saveRestoreSelection(false);
-    await expect(loadRestoreSelection()).resolves.toBe(false);
-  });
 });
 
 describe("配置写入（saveConfig / deleteConfig）", () => {
@@ -228,6 +215,20 @@ describe("配置写入（saveConfig / deleteConfig）", () => {
     await deleteConfig();
     expect(storage.data.has(CONFIG_STORAGE_KEY)).toBe(false);
     await expect(loadConfig()).resolves.toEqual({ ok: false, reason: "absent" });
+  });
+
+  it("清除遗留的恢复划词开关，不影响接口配置", async () => {
+    storage.data.set(CONFIG_STORAGE_KEY, sampleConfig);
+    storage.data.set(LEGACY_RESTORE_SELECTION_STORAGE_KEY, true);
+    await dropLegacyRestoreSelectionSetting();
+    expect(storage.data.has(LEGACY_RESTORE_SELECTION_STORAGE_KEY)).toBe(false);
+    expect(storage.data.get(CONFIG_STORAGE_KEY)).toEqual(sampleConfig);
+  });
+
+  it("剥掉旧 aiConfig 里嵌套的恢复划词字段", async () => {
+    storage.data.set(CONFIG_STORAGE_KEY, { ...sampleConfig, restoreSelection: true });
+    await dropLegacyRestoreSelectionSetting();
+    expect(storage.data.get(CONFIG_STORAGE_KEY)).toEqual(sampleConfig);
   });
 });
 

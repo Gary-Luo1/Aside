@@ -29,13 +29,65 @@ describe("isTrustedOverlayClick", () => {
     expect(isTrustedOverlayClick(event, trigger)).toBe(false);
   });
 
-  it("closed shadow 收口到 host 时仍算命中入口", () => {
+  it("closed shadow 收口到 host 时，只有命中入口才通过", () => {
+    const trigger = document.createElement("button");
+    const host = document.createElement("div");
+    const close = document.createElement("button");
+    const event = {
+      isTrusted: true,
+      composedPath: () => [host],
+      clientX: 12,
+      clientY: 8,
+      detail: 1,
+    } as unknown as Event;
+    expect(
+      isTrustedOverlayClick(event, trigger, {
+        host,
+        root: { elementFromPoint: () => trigger, activeElement: null },
+      }),
+    ).toBe(true);
+    expect(
+      isTrustedOverlayClick(event, trigger, {
+        host,
+        root: { elementFromPoint: () => close, activeElement: close },
+      }),
+    ).toBe(false);
+  });
+
+  it("closed shadow 收口到 host 时，键盘激活仍算命中入口", () => {
     const trigger = document.createElement("button");
     const host = document.createElement("div");
     const event = {
       isTrusted: true,
       composedPath: () => [host],
+      clientX: 0,
+      clientY: 0,
+      detail: 0,
     } as unknown as Event;
-    expect(isTrustedOverlayClick(event, trigger, host)).toBe(true);
+    expect(
+      isTrustedOverlayClick(event, trigger, {
+        host,
+        root: { elementFromPoint: () => trigger, activeElement: trigger },
+      }),
+    ).toBe(true);
+  });
+
+  it("键盘激活其它控件时，即使 (0,0) 落在入口上也不通过", () => {
+    const trigger = document.createElement("button");
+    const host = document.createElement("div");
+    const close = document.createElement("button");
+    const event = {
+      isTrusted: true,
+      composedPath: () => [host],
+      clientX: 0,
+      clientY: 0,
+      detail: 0,
+    } as unknown as Event;
+    expect(
+      isTrustedOverlayClick(event, trigger, {
+        host,
+        root: { elementFromPoint: () => trigger, activeElement: close },
+      }),
+    ).toBe(false);
   });
 });

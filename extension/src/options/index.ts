@@ -3,9 +3,7 @@ import { requestConfigTest } from "../shared/messages";
 import {
   deleteConfig,
   loadConfig,
-  loadRestoreSelection,
   saveConfig,
-  saveRestoreSelection,
   validateConfig,
 } from "../shared/config";
 import { ensureHostPermission } from "../shared/host-permission";
@@ -15,7 +13,6 @@ const form = document.querySelector<HTMLFormElement>("#config-form")!;
 const baseUrlInput = document.querySelector<HTMLInputElement>("#base-url")!;
 const apiKeyInput = document.querySelector<HTMLInputElement>("#api-key")!;
 const modelInput = document.querySelector<HTMLInputElement>("#model")!;
-const restoreSelectionInput = document.querySelector<HTMLInputElement>("#restore-selection")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
 const testButton = document.querySelector<HTMLButtonElement>("#test-connection")!;
 const saveButton = document.querySelector<HTMLButtonElement>("#save")!;
@@ -25,7 +22,6 @@ const toggleKeyButton = document.querySelector<HTMLButtonElement>("#toggle-key")
 let saveEligibleConfig: AiConfig | null = null;
 
 async function init(): Promise<void> {
-  restoreSelectionInput.checked = await loadRestoreSelection();
   const result = await loadConfig();
   if (result.ok) {
     saveEligibleConfig = result.config;
@@ -131,11 +127,6 @@ async function handleDelete(): Promise<void> {
   setStatus("已清除保存的接口信息。", "info");
 }
 
-async function handleRestoreSelectionChange(): Promise<void> {
-  await saveRestoreSelection(restoreSelectionInput.checked);
-  setStatus("已保存划词设置。", "info");
-}
-
 function handleToggleKey(): void {
   const reveal = apiKeyInput.type === "password";
   apiKeyInput.type = reveal ? "text" : "password";
@@ -151,7 +142,6 @@ testButton.addEventListener("click", () => void handleTestConnection());
 form.addEventListener("submit", (event) => void handleSave(event));
 deleteButton.addEventListener("click", () => void handleDelete());
 toggleKeyButton.addEventListener("click", handleToggleKey);
-restoreSelectionInput.addEventListener("change", () => void handleRestoreSelectionChange());
 for (const input of [baseUrlInput, apiKeyInput, modelInput]) {
   input.addEventListener("input", handleFieldChange);
 }

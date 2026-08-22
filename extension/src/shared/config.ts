@@ -1,7 +1,8 @@
 import type { AiConfig } from "./messages";
 
 export const CONFIG_STORAGE_KEY = "aiConfig";
-export const RESTORE_SELECTION_STORAGE_KEY = "restoreSelection";
+/** 旧版「恢复划词」开关的独立存储键；功能已始终开启，启动时删除遗留值。 */
+export const LEGACY_RESTORE_SELECTION_STORAGE_KEY = "restoreSelection";
 
 /**
  * 规范化 Base URL：去尾斜杠，只允许 https；
@@ -104,23 +105,16 @@ export async function deleteConfig(): Promise<void> {
   await chrome.storage.local.remove(CONFIG_STORAGE_KEY);
 }
 
-/** 恢复划词默认关闭；旧配置里嵌在 aiConfig 的 true 会迁移到独立键。 */
-export async function loadRestoreSelection(): Promise<boolean> {
-  const data = await chrome.storage.local.get([RESTORE_SELECTION_STORAGE_KEY, CONFIG_STORAGE_KEY]);
-  const dedicated = data[RESTORE_SELECTION_STORAGE_KEY];
-  if (typeof dedicated === "boolean") return dedicated;
-
+export async function dropLegacyRestoreSelectionSetting(): Promise<void> {
+  await chrome.storage.local.remove(LEGACY_RESTORE_SELECTION_STORAGE_KEY);
+  const data = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
   const raw = data[CONFIG_STORAGE_KEY];
-  const migrated =
-    typeof raw === "object" &&
-    raw !== null &&
-    (raw as { restoreSelection?: unknown }).restoreSelection === true;
-  await chrome.storage.local.set({ [RESTORE_SELECTION_STORAGE_KEY]: migrated });
-  return migrated;
-}
-
-export async function saveRestoreSelection(enabled: boolean): Promise<void> {
-  await chrome.storage.local.set({ [RESTORE_SELECTION_STORAGE_KEY]: enabled });
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return;
+  const stored = raw as Record<string, unknown>;
+  if (!("restoreSelection" in stored)) return;
+  const rest = { ...stored };
+  delete rest.restoreSelection;
+  await chrome.storage.local.set({ [CONFIG_STORAGE_KEY]: rest });
 }
 
 /**

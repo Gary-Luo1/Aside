@@ -206,11 +206,15 @@ async function findButtonNode(
 ): Promise<number | null> {
   const nodeIds = await querySelectorAll(overlay.session, overlay.rootId, "button");
   for (const nodeId of nodeIds) {
-    const { node } = (await overlay.session.send("DOM.describeNode", { nodeId, depth: 0 })) as { node: CdpNode };
-    const attrs = attrMap(node.attributes);
-    const text = (await nodeText(overlay.session, nodeId)).trim();
-    const accessible = (attrs["aria-label"] ?? "").trim();
-    if (text === name || accessible === name) return nodeId;
+    try {
+      const { node } = (await overlay.session.send("DOM.describeNode", { nodeId, depth: 0 })) as { node: CdpNode };
+      const attrs = attrMap(node.attributes);
+      const text = (await nodeText(overlay.session, nodeId)).trim();
+      const accessible = (attrs["aria-label"] ?? "").trim();
+      if (text === name || accessible === name) return nodeId;
+    } catch {
+      // overlay 在查询过程中被替换时 nodeId 会失效，下一轮 poll 重新取文档。
+    }
   }
   return null;
 }
@@ -326,7 +330,8 @@ export async function overlayDialogBox(
 
 export async function overlayDialogEvaluate<T>(
   target: Page | Frame,
-  fn: (el: Element) => T,
+  fn: (el: Element, ...args: unknown[]) => T,
+  ...fnArgs: unknown[]
 ): Promise<T> {
   const overlay = await overlayRootId(target);
   expect(overlay).not.toBeNull();
@@ -337,13 +342,54 @@ export async function overlayDialogEvaluate<T>(
   };
   const { result, exceptionDetails } = (await overlay!.session.send("Runtime.callFunctionOn", {
     objectId: object.objectId,
-    functionDeclaration: `function() { return (${fn.toString()})(this); }`,
+    functionDeclaration: `function(...args) { return (${fn.toString()})(this, ...args); }`,
+    arguments: fnArgs.map((value) => ({ value })),
     returnByValue: true,
   })) as { result: { value?: T }; exceptionDetails?: { text?: string } };
   if (exceptionDetails) {
     throw new Error(exceptionDetails.text ?? "overlayDialogEvaluate failed");
   }
   return result.value as T;
+}
+
+/** 用真实鼠标在解释正文里拖选目标词。 */
+export async function dragSelectOverlayBodyText(target: Page | Frame, word: string): Promise<void> {
+  const coords = await overlayDialogEvaluate(target, (el, rawWord) => {
+    const token = String(rawWord);
+    const paragraph = el.querySelector(".col-pro p") ?? el.querySelector(".col p");
+    const node = paragraph?.firstChild;
+    if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+    const text = node.textContent ?? "";
+    const index = text.indexOf(token);
+    if (index < 0) return null;
+    const range = document.createRange();
+    range.setStart(node, index);
+    range.setEnd(node, index + token.length);
+    const box = range.getBoundingClientRect();
+    if (box.width === 0 && box.height === 0) return null;
+    return {
+      startX: box.left + Math.min(2, box.width / 4),
+      startY: box.top + box.height / 2,
+      endX: box.right - Math.min(2, box.width / 4),
+      endY: box.top + box.height / 2,
+    };
+  }, word);
+  expect(coords, `解释正文里未找到可拖选的词`).not.toBeNull();
+  if (!coords) throw new Error("解释正文里未找到可拖选的词");
+
+  const page = pageOf(target);
+  await page.mouse.move(coords.startX, coords.startY);
+  await page.waitForTimeout(20);
+  await page.mouse.down();
+  await page.waitForTimeout(20);
+  const steps = 16;
+  for (let i = 1; i <= steps; i += 1) {
+    const x = coords.startX + ((coords.endX - coords.startX) * i) / steps;
+    const y = coords.startY + ((coords.endY - coords.startY) * i) / steps;
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
 }
 
 /** 对目标 frame 建立 CDP 会话后点击 closed shadow 内入口。 */

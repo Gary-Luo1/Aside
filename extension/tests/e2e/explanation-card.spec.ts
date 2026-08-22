@@ -1,9 +1,14 @@
 import { expect } from "@playwright/test";
-import { openExplanationCard, test } from "./helpers";
+import { lastFakeApiRequest, openExplanationCard, resetFakeApi, test } from "./helpers";
 import {
   clickOverlayButton,
+  dragSelectOverlayBodyText,
   expectOverlayButtonVisible,
+  expectOverlayDialogHidden,
   expectOverlayDialogText,
+  expectOverlayDialogVisible,
+  focusOverlayButton,
+  overlayButtonBox,
   overlayDialogBox,
   overlayDialogEvaluate,
 } from "./overlay-cdp";
@@ -76,4 +81,85 @@ test.describe("B 双栏解释卡片", () => {
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(1440);
   });
+
+  test("解释正文里再划词可继续解释", async ({ extension }) => {
+    const { page } = await openExplanationCard(
+      extension.context,
+      extension.extensionId,
+      { width: 1440, height: 900 },
+      "算法",
+    );
+
+    await expectOverlayDialogText(page, "一组明确约定");
+    await dragSelectOverlayBodyText(page, "约定");
+
+    await expectOverlayDialogVisible(page);
+    await expectOverlayButtonVisible(page, "解释这个词");
+    await clickOverlayButton(page, "解释这个词");
+    await expectOverlayDialogText(page, "“约定”");
+    await expectOverlayDialogText(page, "约定 的专业解释");
+  });
+
+  test("解释正文划词后点关闭或展开不会发起新解释", async ({ extension }) => {
+    const { page } = await openExplanationCard(
+      extension.context,
+      extension.extensionId,
+      { width: 1440, height: 900 },
+      "云计算",
+    );
+
+    await expectOverlayButtonVisible(page, "展开完整解释");
+    await resetFakeApi();
+    await dragSelectOverlayBodyText(page, "网络");
+    await expectOverlayButtonVisible(page, "解释这个词");
+
+    const followup = await overlayButtonBox(page, "解释这个词");
+    const expand = await overlayButtonBox(page, "展开完整解释");
+    const close = await overlayButtonBox(page, "关闭解释卡片");
+    expect(followup).not.toBeNull();
+    expect(boxesOverlap(followup, expand)).toBe(false);
+    expect(boxesOverlap(followup, close)).toBe(false);
+
+    await clickOverlayButton(page, "展开完整解释");
+    await expectOverlayDialogText(page, "“云计算”");
+    await expectOverlayButtonVisible(page, "收起解释");
+    expect((await lastFakeApiRequest()).requestCount).toBe(0);
+
+    await clickOverlayButton(page, "关闭解释卡片");
+    await expectOverlayDialogHidden(page);
+    expect((await lastFakeApiRequest()).requestCount).toBe(0);
+  });
+
+  test("解释正文划词后键盘激活关闭或展开不会发起新解释", async ({ extension }) => {
+    const { page } = await openExplanationCard(
+      extension.context,
+      extension.extensionId,
+      { width: 1440, height: 900 },
+      "云计算",
+    );
+
+    await expectOverlayButtonVisible(page, "展开完整解释");
+    await resetFakeApi();
+    await dragSelectOverlayBodyText(page, "网络");
+    await expectOverlayButtonVisible(page, "解释这个词");
+
+    await focusOverlayButton(page, "展开完整解释");
+    await page.keyboard.press("Enter");
+    await expectOverlayDialogText(page, "“云计算”");
+    await expectOverlayButtonVisible(page, "收起解释");
+    expect((await lastFakeApiRequest()).requestCount).toBe(0);
+
+    await focusOverlayButton(page, "关闭解释卡片");
+    await page.keyboard.press("Enter");
+    await expectOverlayDialogHidden(page);
+    expect((await lastFakeApiRequest()).requestCount).toBe(0);
+  });
 });
+
+function boxesOverlap(
+  a: { x: number; y: number; width: number; height: number } | null,
+  b: { x: number; y: number; width: number; height: number } | null,
+): boolean {
+  if (!a || !b) return false;
+  return !(a.x + a.width < b.x || b.x + b.width < a.x || a.y + a.height < b.y || b.y + b.height < a.y);
+}
