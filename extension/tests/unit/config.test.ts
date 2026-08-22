@@ -118,7 +118,14 @@ describe("validateConfig", () => {
   });
 
   it("拒绝无效 URL", () => {
-    expect(validateConfig({ baseUrl: "http://x.com", apiKey: "k", model: "m" }).ok).toBe(false);
+    const result = validateConfig({ baseUrl: "http://x.com", apiKey: "k", model: "m" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toContain("官方接口地址");
+      expect(result.message).toContain("https");
+      expect(result.message).not.toContain("本地调试");
+      expect(result.message).not.toContain("localhost");
+    }
   });
 });
 
@@ -155,7 +162,7 @@ describe("配置读取（loadConfig）", () => {
     await expect(loadConfig()).resolves.toEqual({
       ok: false,
       reason: "invalid",
-      message: "API Key 不能为空。",
+      message: "请填写 API Key。",
     });
   });
 

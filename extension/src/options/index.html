@@ -73,12 +73,11 @@
             <strong class="wordmark" aria-label="aside">
               <span>a</span><span>s</span><span>i</span><span>d</span><span>e</span>
             </strong>
-            <small>已经在你电脑上的旁注</small>
           </div>
         </div>
         <div class="conn-state" aria-hidden="true">
           <span class="dot"></span>
-          <span>本地配置</span>
+          <span>本机保存</span>
         </div>
       </header>
 
@@ -86,16 +85,16 @@
         <div class="panel-skin" aria-hidden="true"></div>
         <div class="panel-inner">
           <div class="panel-head">
-            <p class="kicker">配置</p>
-            <h1 id="config-title">接口</h1>
+            <p class="kicker">设置</p>
+            <h1 id="config-title">模型接口</h1>
             <p class="intro">
-              本扩展面向会自行配置 OpenAI 兼容接口的人。划词后的解释直接发往你填写的地址，插件方不提供模型、也不代收费用。
+              把你正在用的模型接口填在这里。划词后的解释会发到这个地址，Aside 不提供模型。
             </p>
           </div>
 
           <form id="config-form" novalidate>
             <div class="field">
-              <label for="base-url">API Base URL</label>
+              <label for="base-url">接口地址</label>
               <input
                 id="base-url"
                 name="baseUrl"
@@ -108,7 +107,7 @@
             </div>
 
             <div class="field">
-              <label for="api-key">API Key</label>
+              <label for="api-key">密钥</label>
               <div class="key-row">
                 <input
                   id="api-key"
@@ -123,7 +122,7 @@
             </div>
 
             <div class="field">
-              <label for="model">Model</label>
+              <label for="model">模型名称</label>
               <input
                 id="model"
                 name="model"
@@ -131,13 +130,13 @@
                 required
                 autocomplete="off"
                 spellcheck="false"
-                placeholder="model-name"
+                placeholder="qwen-plus"
               />
             </div>
 
             <label class="toggle" for="restore-selection">
               <input type="checkbox" id="restore-selection" />
-              <span>在不允许选择的网页上恢复划词。开启后请刷新已打开的页面。</span>
+              <span>在不允许选择的网页上恢复划词</span>
             </label>
 
             <p id="status" role="status" aria-live="polite" class="status"></p>
@@ -150,7 +149,7 @@
           </form>
 
           <p class="privacy-note">
-            API Key 只保存在当前浏览器本地。查询时只发送你选中的短文本，每次解释由你的模型厂商计费。
+            密钥只保存在你的浏览器里。解释时只发送你选中的那几个字。
             详见
             <a href="https://github.com/Gary-Luo1/i-am-fine/blob/main/docs/privacy.md" target="_blank" rel="noreferrer"
               >隐私说明</a

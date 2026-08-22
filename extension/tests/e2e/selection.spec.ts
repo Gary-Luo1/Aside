@@ -6,6 +6,7 @@ import {
   getNamedFrame,
   lastFakeApiRequest,
   openFramesPage,
+  openOptionsPage,
   openTutorialPage,
   resetFakeApi,
   selectText,
@@ -187,7 +188,7 @@ test.describe("选词解释流程", () => {
     await selectText(page, "API");
     await clickOverlayButton(page, "解释这个词");
 
-    await expectOverlayDialogText(page, "尚未配置 AI 接口");
+    await expectOverlayDialogText(page, "还没有填写模型接口");
     await expectOverlayButtonVisible(page, "打开设置");
   });
 
@@ -198,7 +199,7 @@ test.describe("选词解释流程", () => {
     await selectText(page, "API");
     await clickOverlayButton(page, "解释这个词");
 
-    await expectOverlayDialogText(page, "401/403");
+    await expectOverlayDialogText(page, "密钥不正确");
     await expectOverlayButtonVisible(page, "重试");
     await clickOverlayButton(page, "关闭");
     await expectOverlayDialogHidden(page);
@@ -299,7 +300,7 @@ test.describe("选词解释流程", () => {
       endText: "数据库是存储",
     });
 
-    await expectOverlayHintVisible(page, "请选择一个短名词（1–60 字，不含换行）");
+    await expectOverlayHintVisible(page, "请只选一个较短的词（60 字以内）");
     await expectOverlayButtonHidden(page, "解释这个词");
   });
 
@@ -312,7 +313,7 @@ test.describe("选词解释流程", () => {
       "数据库连接池是一种在应用启动时预先创建并维护一组数据库连接对象的机制，用于在请求期间复用连接以减少频繁建立和销毁连接的开销，同时需要处理连接数量限制与超时回收问题。";
     await selectText(page, longPhrase);
 
-    await expectOverlayHintVisible(page, "请选择一个短名词（1–60 字，不含换行）");
+    await expectOverlayHintVisible(page, "请只选一个较短的词（60 字以内）");
     await expectOverlayButtonHidden(page, "解释这个词");
     await page.waitForTimeout(600);
     const { requestCount } = await lastFakeApiRequest();
@@ -350,6 +351,22 @@ test.describe("选词解释流程", () => {
     await expectOverlayButtonVisible(page, "解释这个词");
     await clickOverlayButton(page, "解释这个词");
     await expectOverlayDialogText(page, "专业解释");
+  });
+
+  test("恢复划词勾选后无需刷新已打开页面即可划词", async ({ extension }) => {
+    await configureAndSave(extension.context, extension.extensionId);
+    const page = await extension.context.newPage();
+    await page.goto(`${FAKE_API_BASE}/protected.html`);
+    await expect(page.locator("h1")).toContainText("受保护教程页");
+
+    const options = await openOptionsPage(extension.context, extension.extensionId);
+    await options.locator("#restore-selection").check();
+    await expect(options.locator("#status")).toContainText("已保存划词设置");
+    await options.close();
+
+    await page.bringToFront();
+    await dragSelectText(page, "加密");
+    await expectOverlayButtonVisible(page, "解释这个词");
   });
 
   test("点击入口时页面清空选区（飞书编辑器行为）仍能触发解释", async ({ extension }) => {

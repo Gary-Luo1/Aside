@@ -40,6 +40,7 @@ export const MESSAGE_TYPES = {
   CONFIG_TEST_REQUEST: "CONFIG_TEST_REQUEST",
   EXPLAIN_TERM_REQUEST: "EXPLAIN_TERM_REQUEST",
   GET_SETTINGS_REQUEST: "GET_SETTINGS_REQUEST",
+  RESTORE_SELECTION_CHANGED: "RESTORE_SELECTION_CHANGED",
 } as const;
 
 /** content/options → 后台 的请求；载荷在后台可信边界重新校验。 */
@@ -82,6 +83,16 @@ export function isGetSettingsRequest(
   return isRecord(value) && value.type === MESSAGE_TYPES.GET_SETTINGS_REQUEST;
 }
 
+export function isRestoreSelectionChangedMessage(
+  value: unknown,
+): value is { type: typeof MESSAGE_TYPES.RESTORE_SELECTION_CHANGED; restoreSelection: boolean } {
+  return (
+    isRecord(value) &&
+    value.type === MESSAGE_TYPES.RESTORE_SELECTION_CHANGED &&
+    typeof value.restoreSelection === "boolean"
+  );
+}
+
 // —— 响应守卫：助手函数校验真实回包形状，不再靠强转 ——
 
 export function isExplainResult(value: unknown): value is ExplainResult {
@@ -108,7 +119,7 @@ function isExtensionError(value: unknown): value is ExtensionError {
 }
 
 function unexpected(): ExtensionError {
-  return { code: "unknown", message: "发生未知错误，请重试。" };
+  return { code: "unknown", message: "出了点问题，请重试。" };
 }
 
 /** chrome 消息 API 本身是 any；返回 unknown，由各助手用响应守卫校验。 */

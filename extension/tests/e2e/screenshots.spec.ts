@@ -89,7 +89,7 @@ test.describe("视觉证据", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await selectText(page, "API");
     await clickOverlayButton(page, "解释这个词");
-    await expectOverlayDialogText(page, "尚未配置 AI 接口");
+    await expectOverlayDialogText(page, "还没有填写模型接口");
     await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(OUT_DIR, "unconfigured.png") });
   });
@@ -101,7 +101,7 @@ test.describe("视觉证据", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await selectText(page, "API");
     await clickOverlayButton(page, "解释这个词");
-    await expectOverlayDialogText(page, "429");
+    await expectOverlayDialogText(page, "请求太频繁");
     await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(OUT_DIR, "error.png") });
   });

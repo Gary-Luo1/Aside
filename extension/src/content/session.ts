@@ -1,5 +1,6 @@
 import type { ExplainResult } from "../shared/messages";
 import type { RectLike } from "./position-card";
+import { INVALID_TERM_HINT } from "../shared/term";
 
 export type UiState = "idle" | "ready" | "hint" | "loading" | "success" | "error";
 
@@ -55,7 +56,7 @@ export type SessionOutcome =
 /** 超长/换行选词提示的自动消失时间。 */
 export const HINT_DISMISS_MS = 3_500;
 
-const HINT_MESSAGE = "请选择一个短名词（1–60 字，不含换行）";
+const HINT_MESSAGE = INVALID_TERM_HINT;
 
 export interface SelectionSessionOptions {
   sanitizeTerm: (raw: string) => string | null;

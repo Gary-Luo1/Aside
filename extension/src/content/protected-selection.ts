@@ -11,8 +11,23 @@ const STYLE_ID = "iam-fine-selectable-style";
 const SELECTABLE_ATTR = "data-iam-fine-selectable";
 
 export class ProtectedSelectionRestorer {
+  private attached = false;
+  private readonly onPointerDown = (event: PointerEvent) => this.handlePointerDown(event);
+
   attach(): void {
-    document.addEventListener("pointerdown", (event) => this.handlePointerDown(event), true);
+    if (this.attached) return;
+    document.addEventListener("pointerdown", this.onPointerDown, true);
+    this.attached = true;
+  }
+
+  detach(): void {
+    if (!this.attached) return;
+    document.removeEventListener("pointerdown", this.onPointerDown, true);
+    this.attached = false;
+    document.getElementById(STYLE_ID)?.remove();
+    for (const el of document.querySelectorAll(`[${SELECTABLE_ATTR}]`)) {
+      el.removeAttribute(SELECTABLE_ATTR);
+    }
   }
 
   private handlePointerDown(event: PointerEvent): void {

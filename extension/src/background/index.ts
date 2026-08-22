@@ -4,12 +4,14 @@ import {
   isGetSettingsRequest,
   isOptionsPageSender,
   isPageSender,
+  MESSAGE_TYPES,
   type ExtensionError,
 } from "../shared/messages";
-import { sanitizeTerm } from "../shared/term";
+import { INVALID_TERM_HINT, sanitizeTerm } from "../shared/term";
 import {
   loadConfig,
   loadRestoreSelection,
+  RESTORE_SELECTION_STORAGE_KEY,
   restrictStorageAccessLevel,
   validateConfig,
 } from "../shared/config";
@@ -26,6 +28,13 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.action.onClicked.addListener(() => {
   void chrome.runtime.openOptionsPage();
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") return;
+  const change = changes[RESTORE_SELECTION_STORAGE_KEY];
+  if (!change) return;
+  void notifyRestoreSelectionChanged(change.newValue === true);
 });
 
 chrome.runtime.onMessage.addListener(
@@ -66,7 +75,7 @@ async function handleMessage(message: unknown, sender: chrome.runtime.MessageSen
     if (term === null) {
       return {
         ok: false,
-        error: { code: "invalid_term", message: "请选择一个短名词（1-60 个字符）。" },
+        error: { code: "invalid_term", message: INVALID_TERM_HINT },
       };
     }
     return coordinator.explain(term, sender.tab?.id, sender.frameId);
@@ -76,5 +85,23 @@ async function handleMessage(message: unknown, sender: chrome.runtime.MessageSen
 }
 
 function toUnknownError(): ExtensionError {
-  return { code: "unknown", message: "发生未知错误，请重试。" };
+  return { code: "unknown", message: "出了点问题，请重试。" };
+}
+
+async function notifyRestoreSelectionChanged(restoreSelection: boolean): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  const payload = {
+    type: MESSAGE_TYPES.RESTORE_SELECTION_CHANGED,
+    restoreSelection,
+  };
+  await Promise.all(
+    tabs.map(async (tab) => {
+      if (tab.id === undefined) return;
+      try {
+        await chrome.tabs.sendMessage(tab.id, payload);
+      } catch {
+        // 无内容脚本的标签页（设置页、内部页等）会失败，忽略即可。
+      }
+    }),
+  );
 }

@@ -226,7 +226,7 @@ export class ExplanationOverlay implements OverlayApi {
     const card = document.createElement("section");
     card.className = "card";
     card.setAttribute("role", "dialog");
-    card.setAttribute("aria-label", "术语解释");
+    card.setAttribute("aria-label", "词语解释");
 
     const header = document.createElement("header");
     header.className = "card-header";
@@ -263,8 +263,7 @@ export class ExplanationOverlay implements OverlayApi {
     const footer = document.createElement("footer");
     footer.className = "card-footer";
     const caveat = document.createElement("p");
-    caveat.textContent =
-      "每次解释会向你配置的接口请求一次，费用由该厂商收取。AI 生成内容可能不准确，重要信息请进一步核对。";
+    caveat.textContent = "AI 生成内容可能不准确，重要信息请进一步核对。";
     footer.append(caveat);
 
     card.append(header, body, footer);

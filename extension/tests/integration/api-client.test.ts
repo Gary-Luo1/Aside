@@ -167,7 +167,7 @@ describe("api-client 真实 HTTP 链路", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("unknown");
-      expect(result.error.message).toBe("请求已取消。");
+      expect(result.error.message).toBe("这次解释已取消。");
     }
     expect(Date.now() - start).toBeLessThan(1_000);
   });

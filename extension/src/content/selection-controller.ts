@@ -155,7 +155,7 @@ export class SelectionController {
           seq,
           result: {
             ok: false,
-            error: { code: "unknown", message: "无法连接扩展后台，请重新加载页面后重试。" },
+            error: { code: "unknown", message: "暂时连不上，请刷新这个网页后再试。" },
           },
         }),
       );

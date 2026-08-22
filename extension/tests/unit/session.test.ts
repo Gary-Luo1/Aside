@@ -76,7 +76,7 @@ describe("SelectionSession 决策矩阵", () => {
     });
     expect(outcome).toEqual({
       action: "show-hint",
-      message: expect.stringContaining("短名词"),
+      message: expect.stringContaining("较短的词"),
       anchor: expect.any(Object),
     });
     expect(session.state).toBe("hint");

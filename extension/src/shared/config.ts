@@ -38,7 +38,7 @@ export type ConfigValidationResult =
 /** 校验并规范化配置；外部输入在可信边界重新校验，不依赖 TypeScript 类型。 */
 export function validateConfig(raw: unknown): ConfigValidationResult {
   if (typeof raw !== "object" || raw === null) {
-    return { ok: false, message: "配置无效。" };
+    return { ok: false, message: "配置不完整，请重新填写。" };
   }
   const value = raw as Record<string, unknown>;
 
@@ -46,18 +46,18 @@ export function validateConfig(raw: unknown): ConfigValidationResult {
   if (!baseUrl) {
     return {
       ok: false,
-      message: "Base URL 无效：请输入 https 开头的接口地址（本地调试可用 http://localhost 或 http://127.0.0.1）。",
+      message: "Base URL 无效：请填写模型厂商提供的官方接口地址，并以 https 开头。",
     };
   }
 
   const apiKey = typeof value.apiKey === "string" ? value.apiKey.trim() : "";
   if (apiKey.length === 0) {
-    return { ok: false, message: "API Key 不能为空。" };
+    return { ok: false, message: "请填写 API Key。" };
   }
 
   const model = typeof value.model === "string" ? value.model.trim() : "";
   if (model.length === 0) {
-    return { ok: false, message: "Model 不能为空。" };
+    return { ok: false, message: "请填写模型名称。" };
   }
 
   return {

@@ -104,7 +104,7 @@ describe("ExplanationCoordinator", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("unconfigured");
-      expect(result.error.message).toContain("尚未配置");
+      expect(result.error.message).toContain("还没有填写");
     }
     expect(calls).toHaveLength(0);
   });

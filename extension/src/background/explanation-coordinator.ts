@@ -33,7 +33,7 @@ export class ExplanationCoordinator {
         if (configResult.reason === "absent") {
           return {
             ok: false,
-            error: { code: "unconfigured", message: "尚未配置 AI 接口，请先到设置页完成配置。" },
+            error: { code: "unconfigured", message: "还没有填写模型接口，请先打开设置。" },
           };
         }
         return {

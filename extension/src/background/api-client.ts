@@ -77,7 +77,7 @@ async function requestChatCompletion(
     } catch {
       return {
         ok: false,
-        error: { code: "bad_response", message: "接口返回内容格式不完整，无法生成双层解释。" },
+        error: { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" },
       };
     }
 
@@ -85,7 +85,7 @@ async function requestChatCompletion(
     if (content === null) {
       return {
         ok: false,
-        error: { code: "bad_response", message: "接口返回内容格式不完整，无法生成双层解释。" },
+        error: { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" },
       };
     }
 
@@ -93,7 +93,7 @@ async function requestChatCompletion(
     if (!explanation) {
       return {
         ok: false,
-        error: { code: "bad_response", message: "接口返回内容格式不完整，无法生成双层解释。" },
+        error: { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" },
       };
     }
 
@@ -102,18 +102,18 @@ async function requestChatCompletion(
     if (options.signal?.aborted) {
       return {
         ok: false,
-        error: { code: "unknown", message: "请求已取消。" },
+        error: { code: "unknown", message: "这次解释已取消。" },
       };
     }
     if (isAbortError(error)) {
       return {
         ok: false,
-        error: { code: "timeout", message: `请求超时（${Math.round(timeoutMs / 1000)} 秒），请稍后重试。` },
+        error: { code: "timeout", message: "等太久没有结果，请稍后重试。" },
       };
     }
     return {
       ok: false,
-      error: { code: "network", message: "无法连接到接口地址，请检查网络和 Base URL。" },
+      error: { code: "network", message: "连不上这个地址，请检查网络和填写的接口地址。" },
     };
   } finally {
     clearTimeout(timer);
@@ -136,16 +136,16 @@ function mapHttpError(status: number): ExtensionError {
   switch (status) {
     case 401:
     case 403:
-      return { code: "auth", message: "接口拒绝了密钥（401/403），请检查 API Key。" };
+      return { code: "auth", message: "密钥不正确，请检查 API Key。" };
     case 404:
-      return { code: "not_found", message: "接口地址或模型不存在（404），请检查 Base URL 和 Model 名称。" };
+      return { code: "not_found", message: "接口地址或模型名称不对，请检查后再试。" };
     case 429:
-      return { code: "rate_limited", message: "接口触发限流（429），请稍后再试。" };
+      return { code: "rate_limited", message: "请求太频繁，请稍后再试。" };
     default:
       if (status >= 500) {
-        return { code: "server_error", message: "模型服务暂时异常（5xx），请稍后重试。" };
+        return { code: "server_error", message: "模型服务暂时不可用，请稍后重试。" };
       }
-      return { code: "unknown", message: `接口返回无法识别的错误（${status}）。` };
+      return { code: "unknown", message: "暂时没法完成这次解释，请稍后重试。" };
   }
 }
 

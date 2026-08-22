@@ -10,7 +10,7 @@ export function originPatternFromBaseUrl(baseUrl: string): string | null {
 }
 
 const MISSING_PERMISSION_MESSAGE =
-  "尚未授权访问该接口地址。请打开设置页，测试连接并在浏览器提示中允许。";
+  "还没有允许访问这个地址。请打开设置，点测试连接，并在浏览器提示里选择允许。";
 
 export function hostPermissionError(): { code: "host_permission"; message: string } {
   return { code: "host_permission", message: MISSING_PERMISSION_MESSAGE };

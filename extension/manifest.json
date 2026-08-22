@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Aside",
   "version": "0.2.0",
-  "description": "选中术语，在原页旁注专业与通俗两层解释。使用你自己配置的 OpenAI 兼容接口。",
+  "description": "在网页里划词，就地看到专业和通俗两层解释。使用你自己的模型接口。",
   "homepage_url": "https://github.com/Gary-Luo1/i-am-fine",
   "minimum_chrome_version": "116",
   "icons": {

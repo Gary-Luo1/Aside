@@ -13,7 +13,13 @@ describe("prompt", () => {
     expect(SYSTEM_PROMPT).toContain("只返回一个 JSON 对象");
     expect(SYSTEM_PROMPT).toContain("两栏必须解释同一义项");
     expect(SYSTEM_PROMPT).toContain("<<<TERM");
+    expect(SYSTEM_PROMPT).toContain("都要解释，不要拒绝");
+    expect(SYSTEM_PROMPT).toContain("写 2–4 句");
     expect(SYSTEM_PROMPT).not.toContain('"professional": "专业解释"');
+    expect(SYSTEM_PROMPT).not.toContain("这不像技术术语");
+    expect(SYSTEM_PROMPT).not.toContain("请改选一个词再解释");
+    expect(SYSTEM_PROMPT).not.toContain("不超过 80 个汉字");
+    expect(SYSTEM_PROMPT).not.toContain("不超过 120 个汉字");
   });
 
   it("用户提示把名词放在分隔符内，并去掉分隔符字符", () => {

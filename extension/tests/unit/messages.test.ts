@@ -6,6 +6,7 @@ import {
   isExplainTermRequest,
   isGetSettingsRequest,
   isOptionsPageSender,
+  isRestoreSelectionChangedMessage,
   requestExplainTerm,
 } from "../../src/shared/messages";
 
@@ -36,6 +37,14 @@ describe("载荷守卫", () => {
   it("isGetSettingsRequest 只认类型", () => {
     expect(isGetSettingsRequest({ type: "GET_SETTINGS_REQUEST" })).toBe(true);
     expect(isGetSettingsRequest({ type: "EXPLAIN_TERM_REQUEST", term: "API" })).toBe(false);
+  });
+
+  it("isRestoreSelectionChangedMessage 要求布尔开关", () => {
+    expect(
+      isRestoreSelectionChangedMessage({ type: "RESTORE_SELECTION_CHANGED", restoreSelection: true }),
+    ).toBe(true);
+    expect(isRestoreSelectionChangedMessage({ type: "RESTORE_SELECTION_CHANGED" })).toBe(false);
+    expect(isRestoreSelectionChangedMessage({ type: "GET_SETTINGS_REQUEST" })).toBe(false);
   });
 });
 

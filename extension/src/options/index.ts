@@ -33,7 +33,7 @@ async function init(): Promise<void> {
     apiKeyInput.value = result.config.apiKey;
     modelInput.value = result.config.model;
     deleteButton.hidden = false;
-    setStatus("已保存配置。修改 Base URL、API Key 或 Model 后需要重新测试连接。", "info");
+    setStatus("已保存。若改了地址、密钥或模型，需要重新测试连接。", "info");
   } else if (result.reason === "invalid") {
     deleteButton.hidden = false;
     setStatus(result.message, "error");
@@ -80,7 +80,7 @@ async function handleTestConnection(): Promise<void> {
     if (!granted) {
       saveEligibleConfig = null;
       refreshSaveAvailability();
-      setStatus("需要允许访问该接口地址，才能测试和调用。请在浏览器提示中选择允许。", "error");
+      setStatus("需要允许访问这个地址，才能测试和解释。请在浏览器提示里选择允许。", "error");
       return;
     }
 
@@ -98,7 +98,7 @@ async function handleTestConnection(): Promise<void> {
   } catch {
     saveEligibleConfig = null;
     refreshSaveAvailability();
-    setStatus("无法连接扩展后台，请重新打开设置页。", "error");
+    setStatus("暂时连不上，请关掉这个页面再打开试试。", "error");
   } finally {
     testButton.disabled = false;
   }
@@ -128,12 +128,12 @@ async function handleDelete(): Promise<void> {
   saveEligibleConfig = null;
   deleteButton.hidden = true;
   refreshSaveAvailability();
-  setStatus("已删除 API Base URL、API Key 和 Model，本地配置已清空。", "info");
+  setStatus("已清除保存的接口信息。", "info");
 }
 
 async function handleRestoreSelectionChange(): Promise<void> {
   await saveRestoreSelection(restoreSelectionInput.checked);
-  setStatus("已保存划词设置。请刷新已打开的网页后生效。", "info");
+  setStatus("已保存划词设置。", "info");
 }
 
 function handleToggleKey(): void {
