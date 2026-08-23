@@ -7,7 +7,7 @@
 
 - 电脑需要安装 **Chrome 桌面版**（Windows 或 macOS 均可；手机上不能安装）。
 - 需要准备一个 **API Key**：向你的模型厂商（如 DeepSeek、通义、智谱、OpenAI 兼容服务等）申请，建议使用独立、可撤销、有限额的密钥。
-- 你需要拿到扩展文件：整个 `extension/dist` 文件夹。
+- 你需要从本仓库构建出扩展文件：整个 `extension/dist` 文件夹。
 
 ## 一、安装前需要知道的事
 
@@ -19,7 +19,15 @@
 
 ## 二、安装步骤
 
-1. 在电脑上安装 Chrome 桌面版（Windows 或 macOS 均可）。
+1. 克隆本仓库并构建：
+
+```bash
+git clone https://github.com/Gary-Luo1/Aside.git
+cd Aside
+npm install
+npm run extension:build
+```
+
 2. 打开 `chrome://extensions`。
 3. 打开右上角“开发者模式”开关。
 4. 点击左上角“加载已解压的扩展程序”，选择本项目的 `extension/dist` 文件夹。

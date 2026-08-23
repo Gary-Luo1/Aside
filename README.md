@@ -14,26 +14,22 @@
 - 网页用 CSS 禁止选择时，按下鼠标即可在该处划词
 - 支持普通 HTTP/HTTPS 页面及其同源、跨源 iframe 中的 DOM 文本
 
-隐私优先：只把「你选中的那个词」发送到你自己的接口地址，不读取段落、标题或网址。完整说明见 [docs/privacy.md](docs/privacy.md)。商店权限说明与截图清单见 [docs/store-listing.md](docs/store-listing.md)。
+隐私优先：只把「你选中的那个词」发送到你自己的接口地址，不读取段落、标题或网址。完整说明见 [docs/privacy.md](docs/privacy.md)。
 
-![解释卡片](docs/visual-evidence/1440x900-success.png)
+![解释卡片](docs/screenshot.png)
 
 ## 安装
 
-### 方式一：Release 压缩包（推荐）
-
-1. 在 Releases 页面下载最新版的扩展压缩包并解压。
-2. 打开 Chrome，访问 `chrome://extensions`，打开右上角「开发者模式」。
-3. 点击「加载已解压的扩展程序」，选择解压后的文件夹。
-
-### 方式二：自行构建
+从源码构建后，用 Chrome 加载已解压的扩展：
 
 ```bash
+git clone https://github.com/Gary-Luo1/Aside.git
+cd Aside
 npm install
 npm run extension:build
 ```
 
-构建产物在 `extension/dist/`，按方式一第 2、3 步加载即可。
+打开 Chrome，访问 `chrome://extensions`，打开右上角「开发者模式」，点击「加载已解压的扩展程序」，选择 `extension/dist/`。
 
 详细的安装与配置说明见 [docs/install-guide.md](docs/install-guide.md)。
 
