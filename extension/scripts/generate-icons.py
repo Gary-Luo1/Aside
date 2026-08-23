@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write store icons: cream square, ink letter a."""
+"""Write toolbar icons: cream square, ink letter a."""
 
 from __future__ import annotations
 

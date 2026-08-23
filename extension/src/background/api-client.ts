@@ -136,7 +136,7 @@ function mapHttpError(status: number): ExtensionError {
   switch (status) {
     case 401:
     case 403:
-      return { code: "auth", message: "密钥不正确，请检查 API Key。" };
+      return { code: "auth", message: "密钥不正确，请检查后再试。" };
     case 404:
       return { code: "not_found", message: "接口地址或模型名称不对，请检查后再试。" };
     case 429:

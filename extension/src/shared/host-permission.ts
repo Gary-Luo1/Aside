@@ -18,7 +18,7 @@ export function hostPermissionError(): { code: "host_permission"; message: strin
 
 /**
  * 查询扩展是否已获得对该接口 origin 的访问权限。
- * 测试环境没有 chrome.permissions 时视为已授权，避免拖垮离线 HTTP 单测。
+ * 没有 chrome.permissions API 时视为已授权（非扩展运行环境）。
  */
 export async function hasHostPermission(baseUrl: string): Promise<boolean> {
   const pattern = originPatternFromBaseUrl(baseUrl);

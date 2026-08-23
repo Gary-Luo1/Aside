@@ -8,7 +8,7 @@ import {
 } from "../shared/config";
 import { ensureHostPermission } from "../shared/host-permission";
 
-// 元素来自项目自身固定的 options 页面结构；结构被改坏时由 E2E 兜底。
+// 元素来自项目自身固定的 options 页面结构。
 const form = document.querySelector<HTMLFormElement>("#config-form")!;
 const baseUrlInput = document.querySelector<HTMLInputElement>("#base-url")!;
 const apiKeyInput = document.querySelector<HTMLInputElement>("#api-key")!;

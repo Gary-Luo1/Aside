@@ -1,3 +1,2 @@
 Caveat was replaced. Bundled faces:
 - Gochi Hand (latin) — SIL OFL, via Fontsource / Google Fonts
-- ZCOOL KuaiLe (Chinese, settings page) — SIL OFL, via Fontsource / Google Fonts

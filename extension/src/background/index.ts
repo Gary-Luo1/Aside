@@ -18,7 +18,7 @@ import { ExplanationCoordinator } from "./explanation-coordinator";
 /** 解释请求统一交给协调模块：新请求自动中止同一 frame 的旧请求，避免重复计费。 */
 const coordinator = new ExplanationCoordinator({ loadConfig, explain: explainTerm });
 
-// 安装时唤醒 service worker（MV3 惰性启动），也让 E2E 能稳定拿到扩展 id。
+// 安装时唤醒 service worker（MV3 惰性启动）。
 chrome.runtime.onInstalled.addListener(async () => {
   await restrictStorageAccessLevel();
   await dropLegacyRestoreSelectionSetting();

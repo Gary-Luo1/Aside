@@ -53,7 +53,7 @@ export function validateConfig(raw: unknown): ConfigValidationResult {
 
   const apiKey = typeof value.apiKey === "string" ? value.apiKey.trim() : "";
   if (apiKey.length === 0) {
-    return { ok: false, message: "请填写 API Key。" };
+    return { ok: false, message: "请填写密钥。" };
   }
 
   const model = typeof value.model === "string" ? value.model.trim() : "";
