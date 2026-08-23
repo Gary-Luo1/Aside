@@ -51,7 +51,6 @@ npm run extension:build
 
 - 插件不扫描页面、不读取选中词以外的内容，不发送页面标题或网址。
 - API Key 只保存在浏览器本地存储中，并限制为受信任的扩展上下文读取。
-- 选词、解释、配置相关的安全设计详见 [CONTEXT.md](CONTEXT.md) 与源码。
 - AI 生成内容可能不准确，重要信息请进一步核对。
 
 ## 页面支持边界
@@ -64,14 +63,11 @@ npm run extension:build
 ## 开发
 
 ```bash
+npm install
 npm run extension:typecheck   # TypeScript 类型检查
-npm run extension:test        # 单元 + 集成测试
-npm run extension:test:e2e    # 端到端测试（无窗口；需本机已安装 Playwright Chromium）
 npm run extension:build       # 构建扩展（输出 extension/dist）
-npm run extension:check       # 全量检查：类型 + 测试 + E2E + 构建
+npm run extension:check       # 类型检查 + 构建
 ```
-
-测试覆盖：单元/集成与端到端（真实鼠标拖选、键盘选词、受保护页面、iframe、密钥隔离等）。
 
 ## 许可证
 

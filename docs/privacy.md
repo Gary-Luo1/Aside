@@ -27,4 +27,4 @@ Aside **不会**读取或发送：页面标题、网址、选区以外的内容�
 
 ## 联系
 
-项目主页：https://github.com/Gary-Luo1/i-am-fine
+项目主页：https://github.com/Gary-Luo1/Aside

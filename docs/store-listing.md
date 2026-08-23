@@ -3,7 +3,7 @@
 面向会自行配置模型接口的用户。单用途：网页划词后给出专业/通俗两层解释。
 
 隐私政策（提交时填写公开 URL，需先把本仓库推到 GitHub）：
-https://github.com/Gary-Luo1/i-am-fine/blob/main/docs/privacy.md
+https://github.com/Gary-Luo1/Aside/blob/main/docs/privacy.md
 
 ## 权限说明（审核回复可直接用）
 
