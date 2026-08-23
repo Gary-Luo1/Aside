@@ -7,8 +7,8 @@
  * 不复制、不读取、不发送任何未选中内容。
  */
 
-const STYLE_ID = "iam-fine-selectable-style";
-const SELECTABLE_ATTR = "data-iam-fine-selectable";
+const STYLE_ID = "aside-selectable-style";
+const SELECTABLE_ATTR = "data-aside-selectable";
 
 export class ProtectedSelectionRestorer {
   private attached = false;

@@ -47,7 +47,7 @@ export function validateConfig(raw: unknown): ConfigValidationResult {
   if (!baseUrl) {
     return {
       ok: false,
-      message: "Base URL 无效：请填写模型厂商提供的官方接口地址，并以 https 开头。",
+      message: "接口地址无效，请重新填写。",
     };
   }
 

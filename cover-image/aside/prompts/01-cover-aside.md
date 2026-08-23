@@ -1,4 +1,4 @@
-# Cover Spec: i-am-fine（黑板教学风）
+# Cover Spec: aside（黑板教学风）
 
 - Type: typography（标题为主视觉，板书感）
 - Palette: dark（深色黑板底）
@@ -12,7 +12,7 @@
 
 ## 文案（忠实于项目内容）
 
-- Kicker：浏览器插件 · I am Fine
+- Kicker：浏览器插件 · Aside
 - Title：选中看不懂的词 / 不离开页面就懂了
 - Subtitle：选中即得「专业解释 + 通俗解释」，阅读不再被打断
 - 装饰元素：黄色粉笔框高亮「看不懂的词」、粉笔波浪下划线、星星涂鸦、下方小卡片（解释这个词 → 专业解释 / 通俗解释）

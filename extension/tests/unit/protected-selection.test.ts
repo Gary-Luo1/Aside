@@ -8,7 +8,7 @@ describe("ProtectedSelectionRestorer", () => {
     restorer.attach();
     restorer.detach();
     restorer.detach();
-    expect(document.getElementById("iam-fine-selectable-style")).toBeNull();
+    expect(document.getElementById("aside-selectable-style")).toBeNull();
   });
 
   it("松手后去掉本次可选标记", async () => {
@@ -19,11 +19,11 @@ describe("ProtectedSelectionRestorer", () => {
     const restorer = new ProtectedSelectionRestorer();
     restorer.attach();
     p.dispatchEvent(new PointerEvent("pointerdown", { button: 0, bubbles: true }));
-    expect(p.hasAttribute("data-iam-fine-selectable")).toBe(true);
+    expect(p.hasAttribute("data-aside-selectable")).toBe(true);
     document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-    expect(p.hasAttribute("data-iam-fine-selectable")).toBe(true);
+    expect(p.hasAttribute("data-aside-selectable")).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(p.hasAttribute("data-iam-fine-selectable")).toBe(false);
+    expect(p.hasAttribute("data-aside-selectable")).toBe(false);
     restorer.detach();
     p.remove();
   });

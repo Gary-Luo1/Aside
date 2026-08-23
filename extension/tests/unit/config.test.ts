@@ -120,8 +120,8 @@ describe("validateConfig", () => {
     const result = validateConfig({ baseUrl: "http://x.com", apiKey: "k", model: "m" });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.message).toContain("官方接口地址");
-      expect(result.message).toContain("https");
+      expect(result.message).toContain("接口地址无效");
+      expect(result.message).not.toContain("https");
       expect(result.message).not.toContain("本地调试");
       expect(result.message).not.toContain("localhost");
     }
@@ -165,7 +165,7 @@ describe("配置读取（loadConfig）", () => {
     });
   });
 
-  it("存储被篡改（非本地 http 地址）返回 invalid 并说明 Base URL", async () => {
+  it("存储被篡改（非本地 http 地址）返回 invalid 并说明接口地址", async () => {
     storage.data.set(CONFIG_STORAGE_KEY, {
       baseUrl: "http://evil.example.com/v1",
       apiKey: "k",
@@ -175,7 +175,7 @@ describe("配置读取（loadConfig）", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.reason).toBe("invalid");
-      expect(result.message).toContain("Base URL");
+      expect(result.message).toContain("接口地址无效");
     }
   });
 });

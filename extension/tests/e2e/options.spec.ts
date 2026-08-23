@@ -7,9 +7,9 @@ test.describe("设置页", () => {
     await expect(page.locator("#save")).toBeDisabled();
     await expect(page.locator("#delete-config")).toBeHidden();
     await expect(page.getByRole("heading", { name: "隐私说明" })).toHaveCount(0);
-    await expect(page.locator(".privacy-note")).toContainText(
-      "密钥只保存在你的浏览器里。解释时只发送你选中的那几个字。",
-    );
+    await expect(page.locator(".intro")).toHaveCount(0);
+    await expect(page.locator(".privacy-note")).toHaveText("隐私说明");
+    await expect(page.locator(".privacy-note")).not.toContainText("密钥只保存在你的浏览器里");
     await expect(page.locator("#restore-selection")).toHaveCount(0);
   });
 
@@ -65,7 +65,8 @@ test.describe("设置页", () => {
     await page.locator("#api-key").fill("sk");
     await page.locator("#model").fill("fake-model");
     await page.locator("#test-connection").click();
-    await expect(page.locator("#status")).toContainText("Base URL 无效");
+    await expect(page.locator("#status")).toContainText("接口地址无效");
+    await expect(page.locator("#status")).not.toContainText("https");
     await expect(page.locator("#save")).toBeDisabled();
   });
 });

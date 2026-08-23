@@ -137,7 +137,7 @@ async function overlayRootId(target: Page | Frame): Promise<{ session: CDPSessio
 
 function findOverlayHostInTree(node: CdpNode): number | undefined {
   const attrs = attrMap(node.attributes);
-  if (attrs.id === "i-am-fine-overlay" && node.nodeId) return node.nodeId;
+  if (attrs.id === "aside-overlay" && node.nodeId) return node.nodeId;
   if (node.contentDocument) {
     const found = findOverlayHostInTree(node.contentDocument);
     if (found) return found;
@@ -151,7 +151,7 @@ function findOverlayHostInTree(node: CdpNode): number | undefined {
 
 function findOverlayHostNodeId(node: CdpNode, wantedFrameId: string, currentFrameId: string): number | undefined {
   const attrs = attrMap(node.attributes);
-  if (attrs.id === "i-am-fine-overlay" && node.nodeId && currentFrameId === wantedFrameId) {
+  if (attrs.id === "aside-overlay" && node.nodeId && currentFrameId === wantedFrameId) {
     return node.nodeId;
   }
   if (node.contentDocument) {

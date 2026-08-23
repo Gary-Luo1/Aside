@@ -40,7 +40,7 @@ export class ExplanationOverlay implements OverlayApi {
 
   constructor() {
     this.host = document.createElement("div");
-    this.host.id = "i-am-fine-overlay";
+    this.host.id = "aside-overlay";
     this.host.style.cssText =
       "all:initial; position:fixed; left:0; top:0; width:0; height:0; z-index:2147483647;";
     // closed：页面 JS 不能通过 host.shadowRoot 读取解释或点击入口。

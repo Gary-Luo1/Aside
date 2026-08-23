@@ -400,7 +400,7 @@ test.describe("选词解释流程", () => {
     await selectText(page, "算法");
     await expectOverlayButtonVisible(page, "解释这个词");
 
-    await page.evaluate(() => document.querySelector("#i-am-fine-overlay")?.remove());
+    await page.evaluate(() => document.querySelector("#aside-overlay")?.remove());
     await expectOverlayButtonVisible(page, "解释这个词");
     await clickOverlayButton(page, "解释这个词");
     await expectOverlayDialogText(page, "专业解释");
@@ -467,13 +467,13 @@ test.describe("选词解释流程", () => {
     const nestedFrame = await getNamedFrame(page, "nested-frame");
     const innerFrame = await getNamedFrame(page, "nested-inner-frame");
 
-    await expect.poll(() => nestedFrame.locator("#i-am-fine-overlay").count()).toBe(0);
-    await expect.poll(() => innerFrame.locator("#i-am-fine-overlay").count()).toBe(0);
+    await expect.poll(() => nestedFrame.locator("#aside-overlay").count()).toBe(0);
+    await expect.poll(() => innerFrame.locator("#aside-overlay").count()).toBe(0);
 
     await selectTextInFrame(innerFrame, "算法");
     await expectOverlayButtonVisible(innerFrame, "解释这个词");
-    await expect.poll(() => innerFrame.locator("#i-am-fine-overlay").count()).toBe(1);
-    await expect.poll(() => nestedFrame.locator("#i-am-fine-overlay").count()).toBe(0);
+    await expect.poll(() => innerFrame.locator("#aside-overlay").count()).toBe(1);
+    await expect.poll(() => nestedFrame.locator("#aside-overlay").count()).toBe(0);
   });
 
   test("页面脚本不能读取 closed shadow，也不能合成点击发起解释", async ({ extension }) => {
@@ -484,7 +484,7 @@ test.describe("选词解释流程", () => {
     await expectOverlayButtonVisible(page, "解释这个词");
 
     const fromPage = await page.evaluate(() => {
-      const host = document.querySelector("#i-am-fine-overlay");
+      const host = document.querySelector("#aside-overlay");
       const root = host?.shadowRoot ?? null;
       const trigger = root?.querySelector(".trigger") as HTMLButtonElement | null;
       trigger?.click();
