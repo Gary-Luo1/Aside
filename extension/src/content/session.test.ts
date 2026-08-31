@@ -267,3 +267,96 @@ describe("SelectionSession 指针交互", () => {
     assert.equal(s.on({ kind: "selection-changed", selection: snap() }).action, "show-ready");
   });
 });
+
+describe("SelectionSession 对抗性时序", () => {
+  it("入口点击会把塌陷选区的浏览器打成 loading：click 补同步不得打断解释", () => {
+    const s = session();
+    const selected = snap();
+    s.on({ kind: "selection-changed", selection: selected });
+    // 部分浏览器里点击入口按钮会塌陷页面选区
+    s.on({ kind: "pointer-down", insideOverlay: true, selection: selected });
+    assert.equal(s.on({ kind: "selection-changed", selection: selected }).action, "none");
+    assert.equal(
+      s.on({ kind: "pointer-up", insideOverlay: true, selection: collapsed() }).action,
+      "none",
+    );
+    // trigger 的 window 捕获阶段处理器先于 document click 监听器执行
+    const out = s.on({ kind: "explain-requested", term: "闭包" });
+    assert.equal(out.action, "start-explain");
+    assert.equal(s.state, "loading");
+    // 随后 controller 的 click 补同步（塌陷快照）必须不打断 loading
+    s.on({ kind: "overlay-click" });
+    assert.equal(s.on({ kind: "selection-changed", selection: collapsed() }).action, "none");
+    assert.equal(s.state, "loading");
+    settleOk(s, out.seq);
+    assert.equal(s.state, "success");
+  });
+
+  it("入口点击后选区未塌陷（常见路径）：click 补同步直接跳过", () => {
+    const s = session();
+    const selected = snap();
+    s.on({ kind: "selection-changed", selection: selected });
+    s.on({ kind: "pointer-down", insideOverlay: true, selection: selected });
+    s.on({ kind: "pointer-up", insideOverlay: true, selection: selected });
+    const out = s.on({ kind: "explain-requested", term: "闭包" });
+    assert.equal(out.action, "start-explain");
+    // controller 守卫：非空选区不补发；即使补发了，loading 下非空有效词也不应回 ready
+    assert.equal(
+      s.on({ kind: "selection-changed", selection: snap({ text: "柯里化" }) }).action,
+      "show-ready",
+    );
+    // 说明：loading 状态下外部再报有效选词会开新会话，这是既有语义；
+    // controller 的守卫保证 trigger 自身的点击不会走到这一步。
+    assert.equal(s.state, "ready");
+  });
+
+  it("success 下点击卡片外页面：卡片与入口一起关闭，无残留", () => {
+    const s = session();
+    reachSuccess(s);
+    s.on({ kind: "selection-changed", selection: snap({ text: "柯里化", fromOverlay: true }) });
+    // 点击页面空白：pointerdown 在卡片外
+    s.on({
+      kind: "pointer-down",
+      insideOverlay: false,
+      selection: snap({ text: "柯里化", fromOverlay: true }),
+    });
+    assert.equal(
+      s.on({ kind: "selection-changed", selection: snap({ text: "柯里化", fromOverlay: true }) })
+        .action,
+      "none",
+    );
+    const out = s.on({ kind: "pointer-up", insideOverlay: false, selection: collapsed() });
+    assert.equal(out.action, "close");
+    assert.equal(s.state, "idle");
+  });
+
+  it("hint 状态下点击提示本体：click 补同步把提示一并关闭", () => {
+    const s = session();
+    // 超长多行选词 → hint
+    assert.equal(
+      s.on({ kind: "selection-changed", selection: snap({ text: "一\n二\n三" }) }).action,
+      "show-hint",
+    );
+    s.on({ kind: "pointer-down", insideOverlay: true, selection: snap({ text: "一\n二\n三" }) });
+    assert.equal(
+      s.on({ kind: "pointer-up", insideOverlay: true, selection: collapsed() }).action,
+      "none",
+    );
+    s.on({ kind: "overlay-click" });
+    assert.equal(s.on({ kind: "selection-changed", selection: collapsed() }).action, "close");
+    assert.equal(s.state, "idle");
+  });
+
+  it("卡片内拖选后不松手直接滚出视口：入口跟随关闭语义不适用于 followup", () => {
+    const s = session();
+    reachSuccess(s);
+    assert.equal(
+      s.on({ kind: "selection-changed", selection: snap({ text: "柯里化", fromOverlay: true }) })
+        .action,
+      "show-followup",
+    );
+    // scroll 只在 ready/hint 下关闭；success 保持不动
+    assert.equal(s.on({ kind: "scroll", anchorInViewport: false }).action, "none");
+    assert.equal(s.state, "success");
+  });
+});
