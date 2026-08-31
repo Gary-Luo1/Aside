@@ -18,7 +18,8 @@
   --focus: #2f7de0;
   --on-accent: #12301c;
   --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
-  --text: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --text:
+    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --wax:
@@ -39,7 +40,6 @@ button {
   cursor: pointer;
 }
 
-.overlay,
 .trigger,
 .hint {
   position: fixed;
@@ -113,8 +113,7 @@ button:focus-visible {
   border: 5px solid var(--ink);
   border-radius: 34px 18px 40px 22px / 22px 36px 16px 32px;
   background:
-    var(--wax),
-    radial-gradient(circle at 10% 12%, rgba(255, 79, 134, 0.1), transparent 26%),
+    var(--wax), radial-gradient(circle at 10% 12%, rgba(255, 79, 134, 0.1), transparent 26%),
     var(--surface);
   box-shadow: 9px 11px 0 rgba(47, 125, 224, 0.14);
   font-size: 15px;
@@ -378,6 +377,88 @@ button:focus-visible {
   border: 4px solid var(--ink);
   border-radius: 40% 60% 50% 50% / 48% 40% 60% 52%;
   background: var(--wax), #fff;
+}
+
+.action-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setup-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.setup-label {
+  flex: 0 0 auto;
+  min-width: 62px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.setup-row input {
+  flex: 1 1 180px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 12px;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px 22px 14px 20px / 18px 14px 22px 16px;
+  background: var(--wax), var(--field);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.setup-row input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.setup-row input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.setup-toggle {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.setup-status:empty {
+  display: none;
+}
+
+.setup-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.setup-status[data-tone="ok"] {
+  color: var(--green);
+}
+
+.setup-status[data-tone="error"] {
+  padding: 8px 10px;
+  color: var(--danger);
+  border: 3px dashed var(--danger);
+  border-radius: 14px 20px 12px 18px / 16px 12px 20px 14px;
+  background: var(--wax), var(--danger-soft);
+}
+
+.setup-submit {
+  align-self: flex-start;
 }
 
 .action-button.primary {

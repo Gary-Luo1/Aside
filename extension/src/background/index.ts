@@ -3,28 +3,48 @@ import {
   isExplainTermRequest,
   isOptionsPageSender,
   isPageSender,
+  isSetupConfigRequest,
   type ExtensionError,
-} from "../shared/messages";
-import { INVALID_TERM_HINT, sanitizeTerm } from "../shared/term";
+  type SetupConfigResult,
+} from "../shared/messages.ts";
+import { INVALID_TERM_HINT, sanitizeTerm } from "../shared/term.ts";
 import {
   dropLegacyRestoreSelectionSetting,
   loadConfig,
   restrictStorageAccessLevel,
+  saveConfig,
   validateConfig,
-} from "../shared/config";
-import { explainTerm, testConnection } from "./api-client";
-import { ExplanationCoordinator } from "./explanation-coordinator";
+} from "../shared/config.ts";
+import {
+  PERMISSION_NEEDS_OPTIONS_MESSAGE,
+  ensureHostPermission,
+} from "../shared/host-permission.ts";
+import { explainTerm, testConnection } from "./api-client.ts";
+import { ExplanationCoordinator } from "./explanation-coordinator.ts";
 
 /** 解释请求统一交给协调模块：新请求自动中止同一 frame 的旧请求，避免重复计费。 */
 const coordinator = new ExplanationCoordinator({ loadConfig, explain: explainTerm });
 
-// 安装时唤醒 service worker（MV3 惰性启动）。
-chrome.runtime.onInstalled.addListener(async () => {
-  await restrictStorageAccessLevel();
-  await dropLegacyRestoreSelectionSetting();
-});
+/** 迁移只需跑一次；标记命中即跳过，避免每次 service worker 唤醒都读写 storage。 */
+const MIGRATION_DONE_KEY = "migration:storageAccessLevelRestricted";
 
-void dropLegacyRestoreSelectionSetting();
+async function runMigrations(): Promise<void> {
+  try {
+    const data = await chrome.storage.local.get(MIGRATION_DONE_KEY);
+    if (data[MIGRATION_DONE_KEY] === true) return;
+    await restrictStorageAccessLevel();
+    await dropLegacyRestoreSelectionSetting();
+    await chrome.storage.local.set({ [MIGRATION_DONE_KEY]: true });
+  } catch {
+    // 存储不可用时忽略：迁移只影响遗留数据，不影响解释功能。
+  }
+}
+
+// 安装/更新时唤醒 service worker（MV3 惰性启动）。
+chrome.runtime.onInstalled.addListener(() => void runMigrations());
+
+// 兼容从更旧版本升级、onInstalled 未覆盖到的场景；命中标记后立即返回。
+void runMigrations();
 
 chrome.action.onClicked.addListener(() => {
   void chrome.runtime.openOptionsPage();
@@ -46,7 +66,10 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
-async function handleMessage(message: unknown, sender: chrome.runtime.MessageSender): Promise<unknown> {
+async function handleMessage(
+  message: unknown,
+  sender: chrome.runtime.MessageSender,
+): Promise<unknown> {
   if (isConfigTestRequest(message)) {
     if (!isOptionsPageSender(sender)) return undefined;
     const validation = validateConfig(message.config);
@@ -69,7 +92,31 @@ async function handleMessage(message: unknown, sender: chrome.runtime.MessageSen
     return coordinator.explain(term, sender.tab?.id, sender.frameId);
   }
 
+  if (isSetupConfigRequest(message)) {
+    if (!isPageSender(sender)) return undefined;
+    return handleSetupConfig(message.config);
+  }
+
   return undefined;
+}
+
+/**
+ * 卡片内配置：校验 → 申请主机权限 → 落盘。
+ * 权限申请需要用户手势；拿不到手势时返回引导用户去设置页的提示，不静默失败。
+ */
+async function handleSetupConfig(raw: unknown): Promise<SetupConfigResult> {
+  const validation = validateConfig(raw);
+  if (!validation.ok) return { ok: false, message: validation.message };
+
+  const granted = await ensureHostPermission(validation.config.baseUrl);
+  if (!granted) return { ok: false, message: PERMISSION_NEEDS_OPTIONS_MESSAGE };
+
+  try {
+    await saveConfig(validation.config);
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "保存失败，请稍后再试。" };
+  }
 }
 
 function toUnknownError(): ExtensionError {

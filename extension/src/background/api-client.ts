@@ -1,13 +1,13 @@
-import type { AiConfig, Explanation, ExtensionError } from "../shared/messages";
-import { parseExplanation } from "../shared/explanation";
-import { hasHostPermission, hostPermissionError } from "../shared/host-permission";
-import { SYSTEM_PROMPT, buildConfigTestPrompt, buildUserPrompt } from "./prompt";
+import type { AiConfig, Explanation, ExtensionError } from "../shared/messages.ts";
+import { parseExplanation } from "../shared/explanation.ts";
+import { hasHostPermission, hostPermissionError } from "../shared/host-permission.ts";
+import { isRecord } from "../shared/guard.ts";
+import { SYSTEM_PROMPT, buildConfigTestPrompt, buildUserPrompt } from "./prompt.ts";
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 export type ApiResult =
-  | { ok: true; explanation: Explanation }
-  | { ok: false; error: ExtensionError };
+  { ok: true; explanation: Explanation } | { ok: false; error: ExtensionError };
 
 export interface RequestOptions {
   timeoutMs?: number;
@@ -40,7 +40,7 @@ async function requestChatCompletion(
   const timeoutMs = options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const signal = options.signal
-    ? AbortSignal.any([controller.signal, options.signal])
+    ? mergeSignals(controller.signal, options.signal)
     : controller.signal;
 
   try {
@@ -121,13 +121,13 @@ async function requestChatCompletion(
 }
 
 function extractAssistantContent(payload: unknown): string | null {
-  if (typeof payload !== "object" || payload === null) return null;
-  const root = payload as Record<string, unknown>;
-  if (!Array.isArray(root.choices) || root.choices.length === 0) return null;
-  const first = root.choices[0] as Record<string, unknown> | undefined;
-  if (typeof first !== "object" || first === null) return null;
-  const message = first.message as Record<string, unknown> | undefined;
-  if (typeof message !== "object" || message === null) return null;
+  if (!isRecord(payload)) return null;
+  const choices = payload.choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const first = choices[0];
+  if (!isRecord(first)) return null;
+  const message = first.message;
+  if (!isRecord(message)) return null;
   const content = message.content;
   return typeof content === "string" && content.trim().length > 0 ? content : null;
 }
@@ -151,4 +151,22 @@ function mapHttpError(status: number): ExtensionError {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
+}
+
+/**
+ * 合并两个信号。
+ * 优先用 AbortSignal.any，但它是 Chrome 116 才有的 —— 恰好等于本扩展的
+ * minimum_chrome_version，没有版本余量，因此保留手动降级实现。
+ */
+function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([a, b]);
+  }
+  if (a.aborted) return a;
+  if (b.aborted) return b;
+  const merged = new AbortController();
+  const onAbort = (): void => merged.abort();
+  a.addEventListener("abort", onAbort, { once: true });
+  b.addEventListener("abort", onAbort, { once: true });
+  return merged.signal;
 }

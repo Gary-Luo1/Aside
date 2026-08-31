@@ -15,4 +15,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run extension:check
+      - name: 类型检查
+        run: npm run extension:typecheck
+      - name: 代码检查
+        run: npm run lint
+      - name: 单元测试
+        run: npm run test
+      - name: 格式检查
+        run: npm run format:check
+      - name: 构建发布包
+        run: npm run extension:pack
+      - name: 留存构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: aside-extension
+          path: extension/release/*.zip
+          if-no-files-found: error

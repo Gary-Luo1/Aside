@@ -2,14 +2,24 @@
   "name": "aside",
   "private": true,
   "scripts": {
+    "test": "node --experimental-strip-types --test \"extension/src/**/*.test.ts\"",
+    "format": "prettier --write \"extension/src/**/*.{ts,css}\" \"extension/scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"extension/src/**/*.{ts,css}\" \"extension/scripts/**/*.mjs\"",
+    "lint": "oxlint",
     "extension:typecheck": "tsc -p extension/tsconfig.json --noEmit",
     "extension:build": "node extension/scripts/build.mjs",
-    "extension:check": "npm run extension:typecheck && npm run extension:build"
+    "extension:pack": "node extension/scripts/build.mjs --prod && node extension/scripts/pack.mjs",
+    "extension:check": "npm run extension:typecheck && npm run lint && npm run format:check && npm run test && npm run extension:build"
+  },
+  "engines": {
+    "node": ">=22.6"
   },
   "devDependencies": {
     "@types/chrome": "^0.2.5",
     "@types/node": "^26.1.2",
     "esbuild": "^0.28.1",
+    "oxlint": "^1.80.0",
+    "prettier": "^3.9.6",
     "typescript": "^7.0.2"
   }
 }

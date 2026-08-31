@@ -1,6 +1,6 @@
-import type { ExplainResult } from "../shared/messages";
-import type { RectLike } from "./position-card";
-import { INVALID_TERM_HINT } from "../shared/term";
+import type { ExplainResult } from "../shared/messages.ts";
+import type { RectLike } from "./position-card.ts";
+import { INVALID_TERM_HINT } from "../shared/term.ts";
 
 export type UiState = "idle" | "ready" | "hint" | "loading" | "success" | "error";
 
@@ -76,7 +76,7 @@ export class SelectionSession {
   private currentTerm: string | null = null;
   private currentAnchor: RectLike | null = null;
   private seq = 0;
-  private dragging = false;
+  private isDragging = false;
   private before: Anchor | null = null;
   /** 鼠标正按在入口/卡片内部时，忽略页面清空选区导致的入口关闭。 */
   private suppressCollapseClose = false;
@@ -98,6 +98,11 @@ export class SelectionSession {
     return this.currentAnchor;
   }
 
+  /** 正在拖选：selectionchange 期间的快照会被丢弃，调用方可据此跳过取快照。 */
+  get dragging(): boolean {
+    return this.isDragging;
+  }
+
   on(event: SessionEvent): SessionOutcome {
     switch (event.kind) {
       case "selection-changed":
@@ -107,7 +112,7 @@ export class SelectionSession {
       case "pointer-up":
         return this.onPointerUp(event.insideOverlay, event.selection);
       case "pointer-cancel": {
-        this.dragging = false;
+        this.isDragging = false;
         this.before = null;
         this.suppressCollapseClose = false;
         return { action: "none" };
@@ -122,13 +127,13 @@ export class SelectionSession {
         }
         return { action: "none" };
       case "blur":
-        if (!this.dragging) return { action: "none" };
-        this.dragging = false;
+        if (!this.isDragging) return { action: "none" };
+        this.isDragging = false;
         this.before = null;
         return this.syncFromSelection(event.selection);
       case "overlay-click":
         this.suppressCollapseClose = false;
-        this.dragging = false;
+        this.isDragging = false;
         return { action: "none" };
       case "escape":
         return this.uiState === "idle" ? { action: "none" } : this.closeOutcome();
@@ -150,33 +155,36 @@ export class SelectionSession {
   }
 
   private onSelectionChanged(selection: SelectionSnapshot | null): SessionOutcome {
-    if (this.dragging) return { action: "none" };
+    if (this.isDragging) return { action: "none" };
     return this.syncFromSelection(selection);
   }
 
-  private onPointerDown(insideOverlay: boolean, selection: SelectionSnapshot | null): SessionOutcome {
+  private onPointerDown(
+    insideOverlay: boolean,
+    selection: SelectionSnapshot | null,
+  ): SessionOutcome {
     if (insideOverlay) {
       this.suppressCollapseClose = true;
-      this.dragging = true;
+      this.isDragging = true;
       this.before = selection;
       return { action: "none" };
     }
     this.suppressCollapseClose = false;
     // success 等到松手再决定：再划当前词要留卡，点空白才关。ready/hint/loading/error 仍按下即关。
     if (this.uiState === "success") {
-      this.dragging = true;
+      this.isDragging = true;
       this.before = selection;
       return { action: "none" };
     }
     const closed = this.uiState === "idle" ? { action: "none" as const } : this.closeOutcome();
-    this.dragging = true;
+    this.isDragging = true;
     // 快照在 close 之后记录（close 会清空 before），与「点击空白处不重弹」语义一致。
     this.before = selection;
     return closed;
   }
 
   private onPointerUp(insideOverlay: boolean, selection: SelectionSnapshot | null): SessionOutcome {
-    this.dragging = false;
+    this.isDragging = false;
     const before = this.before;
     this.before = null;
     if (insideOverlay) {
@@ -284,7 +292,7 @@ export class SelectionSession {
     this.uiState = "idle";
     this.currentTerm = null;
     this.currentAnchor = null;
-    this.dragging = false;
+    this.isDragging = false;
     this.before = null;
     return { action: "close" };
   }

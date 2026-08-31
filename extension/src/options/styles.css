@@ -26,7 +26,8 @@
   --focus: #2f7de0;
   --on-accent: #12301c;
   --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
-  --text: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --text:
+    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --wax:

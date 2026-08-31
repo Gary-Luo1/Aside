@@ -26,16 +26,6 @@ export class ProtectedSelectionRestorer {
     this.attached = true;
   }
 
-  detach(): void {
-    if (!this.attached) return;
-    document.removeEventListener("pointerdown", this.onPointerDown, true);
-    document.removeEventListener("pointerup", this.onPointerEnd, true);
-    document.removeEventListener("pointercancel", this.onPointerEnd, true);
-    this.attached = false;
-    document.getElementById(STYLE_ID)?.remove();
-    this.clearSelectableMarks();
-  }
-
   private handlePointerDown(event: PointerEvent): void {
     if (event.button !== 0) return; // 仅左键拖选
     const target = event.target;

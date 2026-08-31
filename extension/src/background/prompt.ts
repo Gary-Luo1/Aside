@@ -19,8 +19,12 @@ export const SYSTEM_PROMPT = `你是 Aside，浏览器划词解释助手。用�
 const TERM_OPEN = "<<<TERM";
 const TERM_CLOSE = "TERM>>>";
 
+/**
+ * 剥掉尖括号，避免选词内容与分隔符拼接后伪造出新的分隔符边界。
+ * 长度与换行限制已在上游保证，这里是最后一道结构性防护。
+ */
 function isolateTerm(term: string): string {
-  return term.replaceAll("<<<", "").replaceAll(">>>", "");
+  return term.replaceAll("<", "").replaceAll(">", "");
 }
 
 export function buildUserPrompt(term: string): string {
@@ -32,10 +36,4 @@ export const CONFIG_TEST_TERM = "API";
 
 export function buildConfigTestPrompt(): string {
   return buildUserPrompt(CONFIG_TEST_TERM);
-}
-
-export function extractTermFromUserPrompt(userText: string): string {
-  const match = /<<<TERM\s*([\s\S]*?)\s*TERM>>>/.exec(userText);
-  if (match?.[1] !== undefined) return match[1].trim();
-  return userText.replace(/^请解释术语：/, "");
 }

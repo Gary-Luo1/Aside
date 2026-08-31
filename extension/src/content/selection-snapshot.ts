@@ -1,4 +1,4 @@
-import type { SelectionSnapshot } from "./session";
+import type { SelectionSnapshot } from "./session.ts";
 
 /**
  * 合并卡片正文选区与页面选区。
@@ -33,4 +33,45 @@ export function pickSelectionSnapshot(
     };
   }
   return fromWindow;
+}
+
+/**
+ * 从任意 Selection 提取不可变快照。
+ * rect 为 0×0 时记 null（调用方据此跳过定位）。
+ * fromOverlay 标记该选区是否落在解释卡片内。
+ */
+export function snapshotSelection(selection: Selection, fromOverlay = false): SelectionSnapshot {
+  const anchorNode = selection.anchorNode;
+  const anchorOffset = selection.anchorOffset;
+  const focusNode = selection.focusNode;
+  const focusOffset = selection.focusOffset;
+  if (selection.rangeCount === 0) {
+    return {
+      collapsed: true,
+      rangeCount: 0,
+      text: "",
+      anchorNode,
+      anchorOffset,
+      focusNode,
+      focusOffset,
+      rect: null,
+      fromOverlay,
+    };
+  }
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  return {
+    collapsed: selection.isCollapsed,
+    rangeCount: selection.rangeCount,
+    text: selection.toString(),
+    anchorNode,
+    anchorOffset,
+    focusNode,
+    focusOffset,
+    fromOverlay,
+    rect:
+      rect.width === 0 && rect.height === 0
+        ? null
+        : { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+  };
 }

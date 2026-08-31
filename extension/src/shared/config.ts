@@ -1,4 +1,5 @@
-import type { AiConfig } from "./messages";
+import type { AiConfig } from "./messages.ts";
+import { isRecord } from "./guard.ts";
 
 export const CONFIG_STORAGE_KEY = "aiConfig";
 /** 旧版「恢复划词」开关的独立存储键；功能已始终开启，启动时删除遗留值。 */
@@ -33,15 +34,14 @@ export function normalizeBaseUrl(raw: unknown): string | null {
 }
 
 export type ConfigValidationResult =
-  | { ok: true; config: AiConfig }
-  | { ok: false; message: string };
+  { ok: true; config: AiConfig } | { ok: false; message: string };
 
 /** 校验并规范化配置；外部输入在可信边界重新校验，不依赖 TypeScript 类型。 */
 export function validateConfig(raw: unknown): ConfigValidationResult {
-  if (typeof raw !== "object" || raw === null) {
+  if (!isRecord(raw)) {
     return { ok: false, message: "配置不完整，请重新填写。" };
   }
-  const value = raw as Record<string, unknown>;
+  const value = raw;
 
   const baseUrl = normalizeBaseUrl(value.baseUrl);
   if (!baseUrl) {
@@ -109,8 +109,8 @@ export async function dropLegacyRestoreSelectionSetting(): Promise<void> {
   await chrome.storage.local.remove(LEGACY_RESTORE_SELECTION_STORAGE_KEY);
   const data = await chrome.storage.local.get(CONFIG_STORAGE_KEY);
   const raw = data[CONFIG_STORAGE_KEY];
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return;
-  const stored = raw as Record<string, unknown>;
+  if (!isRecord(raw) || Array.isArray(raw)) return;
+  const stored = raw;
   if (!("restoreSelection" in stored)) return;
   const rest = { ...stored };
   delete rest.restoreSelection;

@@ -1,4 +1,6 @@
 node_modules/
 extension/dist/
+extension/release/
 *.local.key
 .DS_Store
+.workbuddy/

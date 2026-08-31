@@ -21,9 +21,9 @@ npm run extension:build
 
 打开 `chrome://extensions`，打开开发者模式，加载已解压的扩展程序，选 `extension/dist/`。
 
-点工具栏的 Aside 图标打开设置。三项填好后先「测试连接」（Chrome 可能会问你是否允许访问这个接口网站），通过了再保存。接口地址用 `https`；本机调试可以用 `http://localhost` 或 `http://127.0.0.1`。
+配置接口有两种方式。想省事就在任意网页上划一个词，点「解释这个词」，卡片里会直接给出三个输入框，填完保存后立即生效并开始解释，不用离开当前页。也可以点工具栏的 Aside 图标打开设置，三项填好后先「测试连接」（Chrome 可能会问你是否允许访问这个接口网站），通过了再保存。接口地址用 `https`；本机调试可以用 `http://localhost` 或 `http://127.0.0.1`。
 
-更细的步骤见 [安装说明](docs/install-guide.md)。
+更细的步骤见 [安装说明](docs/install-guide.md)。更新内容见 [更新日志](CHANGELOG.md)。
 
 ## 使用时注意
 

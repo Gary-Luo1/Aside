@@ -1,14 +1,22 @@
-import { requestExplainTerm } from "../shared/messages";
-import { sanitizeTerm } from "../shared/term";
-import type { RectLike } from "./position-card";
+import {
+  requestExplainTerm,
+  requestSetupConfig,
+  type AiConfig,
+  type SetupConfigResult,
+} from "../shared/messages.ts";
+import { sanitizeTerm } from "../shared/term.ts";
+import type { RectLike } from "./position-card.ts";
 import {
   HINT_DISMISS_MS,
   SelectionSession,
   type SelectionSnapshot,
   type SessionOutcome,
-} from "./session";
-import { pickSelectionSnapshot } from "./selection-snapshot";
-import { ExplanationOverlay, type OverlayApi, type RenderData } from "./ui/overlay";
+} from "./session.ts";
+import { pickSelectionSnapshot, snapshotSelection } from "./selection-snapshot.ts";
+import { ExplanationOverlay, type OverlayApi, type RenderData } from "./ui/overlay.ts";
+
+/** 卡片内配置表单的初始空值。 */
+const EMPTY_CONFIG: AiConfig = { baseUrl: "", apiKey: "", model: "" };
 
 /**
  * 选词触发的 DOM 适配器：把页面事件翻译成选词会话事件，
@@ -58,6 +66,8 @@ export class SelectionController {
   }
 
   private handleSelectionChange(): void {
+    // 拖选期间会话会丢弃快照；先判断再做，避免每次 selectionchange 都强制重排。
+    if (this.session.dragging) return;
     this.apply(this.session.on({ kind: "selection-changed", selection: this.snapshotSelection() }));
   }
 
@@ -82,12 +92,13 @@ export class SelectionController {
   }
 
   private handleScroll(): void {
-    const currentAnchor = this.snapshotSelection()?.rect ?? null;
+    // 只有 ready / hint 会跟随选区关闭；其余状态直接跳过，避免每次滚动都强制重排。
+    const state = this.session.state;
+    if (state !== "ready" && state !== "hint") return;
+    const anchor = this.session.anchor;
+    if (anchor === null) return;
     this.apply(
-      this.session.on({
-        kind: "scroll",
-        anchorInViewport: currentAnchor === null ? false : this.anchorInViewport(currentAnchor),
-      }),
+      this.session.on({ kind: "scroll", anchorInViewport: this.anchorInViewport(anchor) }),
     );
   }
 
@@ -107,38 +118,7 @@ export class SelectionController {
 
   private snapshotWindowSelection(): SelectionSnapshot | null {
     const selection = window.getSelection();
-    if (!selection) return null;
-    const anchorNode = selection.anchorNode;
-    const anchorOffset = selection.anchorOffset;
-    const focusNode = selection.focusNode;
-    const focusOffset = selection.focusOffset;
-    if (selection.rangeCount === 0) {
-      return {
-        collapsed: true,
-        rangeCount: 0,
-        text: "",
-        anchorNode,
-        anchorOffset,
-        focusNode,
-        focusOffset,
-        rect: null,
-      };
-    }
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    return {
-      collapsed: selection.isCollapsed,
-      rangeCount: selection.rangeCount,
-      text: selection.toString(),
-      anchorNode,
-      anchorOffset,
-      focusNode,
-      focusOffset,
-      rect:
-        rect.width === 0 && rect.height === 0
-          ? null
-          : { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
-    };
+    return selection ? snapshotSelection(selection) : null;
   }
 
   private explain(term: string): void {
@@ -164,6 +144,20 @@ export class SelectionController {
           },
         }),
       );
+    }
+  }
+
+  /** 保存卡片内填写的配置；成功后立即用当前词重发解释。 */
+  private async saveConfigAndRetry(config: AiConfig): Promise<SetupConfigResult> {
+    try {
+      const result = await requestSetupConfig(config);
+      if (result.ok) {
+        const term = this.session.term;
+        if (term !== null) this.explain(term);
+      }
+      return result;
+    } catch {
+      return { ok: false, message: "暂时连不上，请刷新这个网页后再试。" };
     }
   }
 
@@ -193,7 +187,9 @@ export class SelectionController {
         });
         return;
       case "show-followup":
-        this.ensureOverlay().showFollowup(outcome.term, outcome.anchor, (term) => this.explain(term));
+        this.ensureOverlay().showFollowup(outcome.term, outcome.anchor, (term) =>
+          this.explain(term),
+        );
         return;
       case "hide-followup":
         this.overlay?.hideFollowup();
@@ -216,9 +212,14 @@ export class SelectionController {
         if (outcome.result.ok) {
           data.explanation = outcome.result.explanation;
         } else {
+          const code = outcome.result.error.code;
           data.error = outcome.result.error;
-          if (outcome.result.error.code === "unconfigured" || outcome.result.error.code === "host_permission") {
-            data.onOpenOptions = () => void chrome.runtime.openOptionsPage();
+          if (code === "unconfigured" || code === "host_permission") {
+            // 卡片内直接配置：保存成功后立刻重发解释，全程不离开当前页。
+            data.setup = {
+              initial: EMPTY_CONFIG,
+              onSave: (config) => this.saveConfigAndRetry(config),
+            };
           } else {
             data.onRetry = () => {
               const term = this.session.term;
