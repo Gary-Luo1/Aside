@@ -41,14 +41,16 @@ export class SelectionController {
     window.addEventListener("pointerdown", (event) => this.handlePointerDown(event), true);
     document.addEventListener("pointerup", (event) => this.handlePointerUp(event));
     document.addEventListener("click", (event) => {
-      if (this.overlayContainsEvent(event)) {
-        this.apply(this.session.on({ kind: "overlay-click" }));
-        // 点击清空卡片内选区时，塌陷发生在按下期间，对应的 selectionchange 已被拖选
-        // 过滤器丢弃；click 在按下之后触发，这里补一次同步来隐藏继续解释入口。
-        // followup 入口的点击在 window 捕获阶段先行处理并触发重渲染，不受影响。
-        this.apply(
-          this.session.on({ kind: "selection-changed", selection: this.snapshotSelection() }),
-        );
+      if (!this.overlayContainsEvent(event)) return;
+      this.apply(this.session.on({ kind: "overlay-click" }));
+      // 点击清空卡片内选区时，塌陷发生在按下期间，对应的 selectionchange 已被拖选
+      // 过滤器丢弃；click 在按下之后触发，这里补一次同步来隐藏继续解释入口。
+      // 只在快照为空/塌陷时补发：非空选区由 pointer-up 路径处理，否则会把
+      // trigger 点击后刚进入的 loading 打回 ready（trigger 点击不塌陷页面选区）。
+      // followup 入口的点击在 window 捕获阶段先行处理并触发重渲染，不受影响。
+      const snapshot = this.snapshotSelection();
+      if (snapshot && (snapshot.collapsed || snapshot.text.length === 0)) {
+        this.apply(this.session.on({ kind: "selection-changed", selection: snapshot }));
       }
     });
     document.addEventListener("pointercancel", () => {
