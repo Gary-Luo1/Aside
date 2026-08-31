@@ -241,6 +241,25 @@ describe("SelectionSession 指针交互", () => {
     );
   });
 
+  it("点击清空卡片内选区：click 后补的塌陷同步隐藏继续解释入口", () => {
+    const s = session();
+    reachSuccess(s);
+    const selected = snap({ text: "柯里化", fromOverlay: true });
+    s.on({ kind: "pointer-down", insideOverlay: true, selection: selected });
+    // 塌陷发生在按下期间，selectionchange 被拖选过滤器丢弃
+    assert.equal(s.on({ kind: "selection-changed", selection: selected }).action, "none");
+    assert.equal(
+      s.on({ kind: "pointer-up", insideOverlay: true, selection: collapsedInOverlay() }).action,
+      "none",
+    );
+    // controller 在 click 后补发同步，session 据此隐藏入口
+    s.on({ kind: "overlay-click" });
+    assert.equal(
+      s.on({ kind: "selection-changed", selection: collapsedInOverlay() }).action,
+      "hide-followup",
+    );
+  });
+
   it("pointer-cancel 重置拖选状态", () => {
     const s = session();
     s.on({ kind: "pointer-down", insideOverlay: false, selection: collapsed() });

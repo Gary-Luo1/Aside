@@ -106,16 +106,23 @@ async function handleMessage(
  */
 async function handleSetupConfig(raw: unknown): Promise<SetupConfigResult> {
   const validation = validateConfig(raw);
-  if (!validation.ok) return { ok: false, message: validation.message };
+  if (!validation.ok) {
+    return { ok: false, error: { code: "invalid_config", message: validation.message } };
+  }
 
   const granted = await ensureHostPermission(validation.config.baseUrl);
-  if (!granted) return { ok: false, message: PERMISSION_NEEDS_OPTIONS_MESSAGE };
+  if (!granted) {
+    return {
+      ok: false,
+      error: { code: "host_permission", message: PERMISSION_NEEDS_OPTIONS_MESSAGE },
+    };
+  }
 
   try {
     await saveConfig(validation.config);
     return { ok: true };
   } catch {
-    return { ok: false, message: "保存失败，请稍后再试。" };
+    return { ok: false, error: { code: "unknown", message: "保存失败，请稍后再试。" } };
   }
 }
 

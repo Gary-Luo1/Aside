@@ -349,7 +349,7 @@ export class ExplanationOverlay implements OverlayApi {
             setStatus("已保存，正在解释…", "ok");
             return;
           }
-          setStatus(result.message, "error");
+          setStatus(result.error.message, "error");
         } catch {
           setStatus("保存失败，请稍后再试。", "error");
         }

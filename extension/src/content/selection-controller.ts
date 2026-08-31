@@ -43,6 +43,12 @@ export class SelectionController {
     document.addEventListener("click", (event) => {
       if (this.overlayContainsEvent(event)) {
         this.apply(this.session.on({ kind: "overlay-click" }));
+        // 点击清空卡片内选区时，塌陷发生在按下期间，对应的 selectionchange 已被拖选
+        // 过滤器丢弃；click 在按下之后触发，这里补一次同步来隐藏继续解释入口。
+        // followup 入口的点击在 window 捕获阶段先行处理并触发重渲染，不受影响。
+        this.apply(
+          this.session.on({ kind: "selection-changed", selection: this.snapshotSelection() }),
+        );
       }
     });
     document.addEventListener("pointercancel", () => {
@@ -157,7 +163,10 @@ export class SelectionController {
       }
       return result;
     } catch {
-      return { ok: false, message: "暂时连不上，请刷新这个网页后再试。" };
+      return {
+        ok: false,
+        error: { code: "network", message: "暂时连不上，请刷新这个网页后再试。" },
+      };
     }
   }
 

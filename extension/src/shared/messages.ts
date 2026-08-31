@@ -56,7 +56,7 @@ export type ExplainResult =
 export type ConfigTestResult = { ok: true } | { ok: false; error: ExtensionError };
 
 /** 后台对「卡片内配置」保存请求的稳定响应。 */
-export type SetupConfigResult = { ok: true } | { ok: false; message: string };
+export type SetupConfigResult = { ok: true } | { ok: false; error: ExtensionError };
 
 // —— 载荷守卫：后台在可信边界按具体类型分发，不再只信 type 字符串 ——
 
@@ -110,7 +110,7 @@ export function isConfigTestResult(value: unknown): value is ConfigTestResult {
 function isSetupConfigResult(value: unknown): value is SetupConfigResult {
   if (!isRecord(value)) return false;
   if (value.ok === true) return true;
-  return value.ok === false && typeof value.message === "string";
+  return value.ok === false && isExtensionError(value.error);
 }
 
 function isExtensionError(value: unknown): value is ExtensionError {
@@ -136,12 +136,12 @@ export async function requestConfigTest(config: AiConfig): Promise<ConfigTestRes
   return isConfigTestResult(response) ? response : { ok: false, error: unexpected() };
 }
 
-/** 卡片内配置：校验、申请主机权限并落盘。失败返回用户可读的原因。 */
+/** 卡片内配置：校验、申请主机权限并落盘。失败返回稳定错误码 + 可读原因。 */
 export async function requestSetupConfig(config: AiConfig): Promise<SetupConfigResult> {
   const response = await send({ type: MESSAGE_TYPES.SETUP_CONFIG_REQUEST, config });
   return isSetupConfigResult(response)
     ? response
-    : { ok: false, message: "暂时连不上，请刷新这个网页后再试。" };
+    : { ok: false, error: { code: "network", message: "暂时连不上，请刷新这个网页后再试。" } };
 }
 
 // —— 发送方授权规则：与契约同住 ——
