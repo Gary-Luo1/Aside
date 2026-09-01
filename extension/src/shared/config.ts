@@ -105,6 +105,19 @@ export async function deleteConfig(): Promise<void> {
   await chrome.storage.local.remove(CONFIG_STORAGE_KEY);
 }
 
+/** 已有有效配置时卡片内配置不再允许覆盖；换配置必须走设置页。 */
+export const CONFIG_LOCKED_MESSAGE =
+  "已保存过接口配置。如需更换，请点工具栏的 Aside 图标，在设置页里修改。";
+
+/**
+ * 卡片内配置只在「当前没有有效配置」时允许：
+ * 首次配置（absent）或覆盖损坏配置（invalid）。
+ * 有效配置一旦存在，任意页面 frame 都不能再静默改写计费去向与密钥。
+ */
+export function allowsCardSetup(existing: ConfigLoadResult): boolean {
+  return !existing.ok;
+}
+
 export async function dropLegacyRestoreSelectionSetting(): Promise<void> {
   await chrome.storage.local.remove(LEGACY_RESTORE_SELECTION_STORAGE_KEY);
   const data = await chrome.storage.local.get(CONFIG_STORAGE_KEY);

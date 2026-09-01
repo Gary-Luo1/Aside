@@ -17,8 +17,10 @@ export const ERROR_CODES = [
   "unconfigured",
   "invalid_term",
   "invalid_config",
+  "config_locked",
   "network",
   "auth",
+  "bad_request",
   "not_found",
   "rate_limited",
   "server_error",
@@ -39,6 +41,7 @@ export interface ExtensionError {
 export const MESSAGE_TYPES = {
   CONFIG_TEST_REQUEST: "CONFIG_TEST_REQUEST",
   EXPLAIN_TERM_REQUEST: "EXPLAIN_TERM_REQUEST",
+  CANCEL_EXPLAIN_REQUEST: "CANCEL_EXPLAIN_REQUEST",
   SETUP_CONFIG_REQUEST: "SETUP_CONFIG_REQUEST",
 } as const;
 
@@ -46,6 +49,7 @@ export const MESSAGE_TYPES = {
 export type RuntimeRequest =
   | { type: typeof MESSAGE_TYPES.CONFIG_TEST_REQUEST; config: AiConfig }
   | { type: typeof MESSAGE_TYPES.EXPLAIN_TERM_REQUEST; term: string }
+  | { type: typeof MESSAGE_TYPES.CANCEL_EXPLAIN_REQUEST }
   | { type: typeof MESSAGE_TYPES.SETUP_CONFIG_REQUEST; config: AiConfig };
 
 /** 后台对解释请求的稳定响应。 */
@@ -68,6 +72,12 @@ export function isExplainTermRequest(
     value.type === MESSAGE_TYPES.EXPLAIN_TERM_REQUEST &&
     typeof value.term === "string"
   );
+}
+
+export function isCancelExplainRequest(
+  value: unknown,
+): value is { type: typeof MESSAGE_TYPES.CANCEL_EXPLAIN_REQUEST } {
+  return isRecord(value) && value.type === MESSAGE_TYPES.CANCEL_EXPLAIN_REQUEST;
 }
 
 export function isConfigTestRequest(
@@ -129,6 +139,18 @@ async function send(request: RuntimeRequest): Promise<unknown> {
 export async function requestExplainTerm(term: string): Promise<ExplainResult> {
   const response = await send({ type: MESSAGE_TYPES.EXPLAIN_TERM_REQUEST, term });
   return isExplainResult(response) ? response : { ok: false, error: unexpected() };
+}
+
+/**
+ * 取消当前 frame 的在途解释（关闭卡片 / 换词时调用）。
+ * 尽力而为：后台无响应或扩展上下文失效时直接忽略，请求会按超时自行结束。
+ */
+export async function requestCancelExplain(): Promise<void> {
+  try {
+    await send({ type: MESSAGE_TYPES.CANCEL_EXPLAIN_REQUEST });
+  } catch {
+    // 取消失败不影响主流程。
+  }
 }
 
 export async function requestConfigTest(config: AiConfig): Promise<ConfigTestResult> {

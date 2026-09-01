@@ -196,6 +196,64 @@ describe("SelectionSession 关闭与中断", () => {
   });
 });
 
+describe("SelectionSession 取消在途请求", () => {
+  it("loading 中关闭：要求取消在途请求", () => {
+    const s = session();
+    s.on({ kind: "selection-changed", selection: snap() });
+    startExplain(s, "闭包");
+    const out = s.on({ kind: "close" });
+    assert.equal(out.action, "close");
+    if (out.action === "close") assert.equal(out.cancelInFlight, true);
+  });
+
+  it("loading 中换词：入口替换加载卡片，并取消旧请求", () => {
+    const s = session();
+    s.on({ kind: "selection-changed", selection: snap() });
+    startExplain(s, "闭包");
+    const out = s.on({ kind: "selection-changed", selection: snap({ text: "柯里化" }) });
+    assert.equal(out.action, "show-ready");
+    if (out.action === "show-ready") assert.equal(out.cancelInFlight, true);
+  });
+
+  it("loading 中选了超长词：提示出现并取消旧请求", () => {
+    const s = session();
+    s.on({ kind: "selection-changed", selection: snap() });
+    startExplain(s, "闭包");
+    const out = s.on({ kind: "selection-changed", selection: snap({ text: "x".repeat(61) }) });
+    assert.equal(out.action, "show-hint");
+    if (out.action === "show-hint") assert.equal(out.cancelInFlight, true);
+  });
+
+  it("没有在途请求时的普通关闭不要求取消", () => {
+    const s = session();
+    s.on({ kind: "selection-changed", selection: snap() });
+    const out = s.on({ kind: "close" });
+    assert.equal(out.action, "close");
+    if (out.action === "close") assert.equal(out.cancelInFlight, false);
+  });
+
+  it("结算完成后再关闭不要求取消", () => {
+    const s = session();
+    reachSuccess(s);
+    const out = s.on({ kind: "close" });
+    if (out.action === "close") assert.equal(out.cancelInFlight, false);
+  });
+
+  it("取消作废 seq：随后到达的旧响应被丢弃", () => {
+    const s = session();
+    s.on({ kind: "selection-changed", selection: snap() });
+    const seq = startExplain(s, "闭包");
+    s.on({ kind: "close" });
+    const stale = s.on({
+      kind: "explain-settled",
+      seq,
+      result: { ok: true, explanation: { professional: "P", plain: "L" } },
+    });
+    assert.equal(stale.action, "none");
+    assert.equal(s.state, "idle");
+  });
+});
+
 describe("SelectionSession 指针交互", () => {
   it("拖选期间忽略 selectionchange", () => {
     const s = session();
@@ -266,6 +324,15 @@ describe("SelectionSession 指针交互", () => {
     s.on({ kind: "pointer-cancel" });
     assert.equal(s.on({ kind: "selection-changed", selection: snap() }).action, "show-ready");
   });
+
+  it("卡片内按下、卡外松开：塌陷关闭不再被长期抑制", () => {
+    const s = session();
+    s.on({ kind: "selection-changed", selection: snap() }); // ready
+    s.on({ kind: "pointer-down", insideOverlay: true, selection: snap() });
+    // click 目标落在公共祖先上不会命中 overlay，等价于收不到 overlay-click 复位
+    s.on({ kind: "pointer-up", insideOverlay: false, selection: collapsed() });
+    assert.equal(s.on({ kind: "selection-changed", selection: collapsed() }).action, "close");
+  });
 });
 
 describe("SelectionSession 对抗性时序", () => {
@@ -280,12 +347,13 @@ describe("SelectionSession 对抗性时序", () => {
       s.on({ kind: "pointer-up", insideOverlay: true, selection: collapsed() }).action,
       "none",
     );
-    // trigger 的 window 捕获阶段处理器先于 document click 监听器执行
+    // 现行顺序：window 捕获的 overlay-click 处理器先于 trigger 处理器执行；
+    // 控制器在 ready 状态不补发塌陷同步，这里只复位拖选标志
+    s.on({ kind: "overlay-click" });
     const out = s.on({ kind: "explain-requested", term: "闭包" });
     assert.equal(out.action, "start-explain");
     assert.equal(s.state, "loading");
-    // 随后 controller 的 click 补同步（塌陷快照）必须不打断 loading
-    s.on({ kind: "overlay-click" });
+    // 兜底：即使塌陷同步晚于 explain-requested 到达，也不得打断 loading
     assert.equal(s.on({ kind: "selection-changed", selection: collapsed() }).action, "none");
     assert.equal(s.state, "loading");
     settleOk(s, out.seq);

@@ -1,11 +1,12 @@
 import {
+  requestCancelExplain,
   requestExplainTerm,
   requestSetupConfig,
   type AiConfig,
   type SetupConfigResult,
 } from "../shared/messages.ts";
 import { sanitizeTerm } from "../shared/term.ts";
-import type { RectLike } from "./position-card.ts";
+import { anchorInViewport } from "./position-card.ts";
 import {
   HINT_DISMISS_MS,
   SelectionSession,
@@ -26,6 +27,8 @@ export class SelectionController {
   private overlay: OverlayApi | null = null;
   private readonly session: SelectionSession;
   private hintTimer: number | null = null;
+  /** 滚动检测的 rAF 句柄：读实时选区矩形要付一次布局开销，一帧最多做一次。 */
+  private scrollFrame: number | null = null;
 
   constructor() {
     this.session = new SelectionSession({ sanitizeTerm });
@@ -33,26 +36,22 @@ export class SelectionController {
 
   attach(): void {
     document.addEventListener("selectionchange", () => this.handleSelectionChange());
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
+    // window 捕获阶段听 Esc：页面拦掉 document 阶段的事件传播也不影响关闭卡片。
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key !== "Escape") return;
+        // 卡片内输入框聚焦时把 Esc 留给表单，避免误关丢掉已输入的密钥
+        if (this.overlayContainsEvent(event) && isEditableTarget(event.target)) return;
         this.apply(this.session.on({ kind: "escape" }));
-      }
-    });
+      },
+      true,
+    );
     window.addEventListener("pointerdown", (event) => this.handlePointerDown(event), true);
     document.addEventListener("pointerup", (event) => this.handlePointerUp(event));
-    document.addEventListener("click", (event) => {
-      if (!this.overlayContainsEvent(event)) return;
-      this.apply(this.session.on({ kind: "overlay-click" }));
-      // 点击清空卡片内选区时，塌陷发生在按下期间，对应的 selectionchange 已被拖选
-      // 过滤器丢弃；click 在按下之后触发，这里补一次同步来隐藏继续解释入口。
-      // 只在快照为空/塌陷时补发：非空选区由 pointer-up 路径处理，否则会把
-      // trigger 点击后刚进入的 loading 打回 ready（trigger 点击不塌陷页面选区）。
-      // followup 入口的点击在 window 捕获阶段先行处理并触发重渲染，不受影响。
-      const snapshot = this.snapshotSelection();
-      if (snapshot && (snapshot.collapsed || snapshot.text.length === 0)) {
-        this.apply(this.session.on({ kind: "selection-changed", selection: snapshot }));
-      }
-    });
+    // 与入口点击同一防线（window 捕获）：页面阻断 document 阶段传播时，
+    // 卡片内点击仍能同步会话状态。先于 trigger 处理器注册，因此也先执行。
+    window.addEventListener("click", (event) => this.handleOverlayClick(event), true);
     document.addEventListener("pointercancel", () => {
       this.apply(this.session.on({ kind: "pointer-cancel" }));
     });
@@ -99,15 +98,49 @@ export class SelectionController {
     );
   }
 
-  private handleScroll(): void {
-    // 只有 ready / hint 会跟随选区关闭；其余状态直接跳过，避免每次滚动都强制重排。
+  /**
+   * 卡片内点击的会话同步。塌陷补发只做 success（隐藏继续解释入口）与
+   * hint（点提示本体关闭）两件事；ready/loading 下一律不补发——
+   * 本处理器先于 trigger 处理器执行，ready 下补发塌陷会把刚要开始的解释关掉。
+   */
+  private handleOverlayClick(event: Event): void {
+    if (!this.overlayContainsEvent(event)) return;
+    this.apply(this.session.on({ kind: "overlay-click" }));
     const state = this.session.state;
-    if (state !== "ready" && state !== "hint") return;
-    const anchor = this.session.anchor;
-    if (anchor === null) return;
-    this.apply(
-      this.session.on({ kind: "scroll", anchorInViewport: this.anchorInViewport(anchor) }),
-    );
+    if (state !== "success" && state !== "hint") return;
+    const snapshot = this.snapshotSelection();
+    if (snapshot && (snapshot.collapsed || snapshot.text.length === 0)) {
+      this.apply(this.session.on({ kind: "selection-changed", selection: snapshot }));
+    }
+  }
+
+  /** ready / hint 且带锚点：只有这两态的入口跟随选区，滚出视口时关闭。 */
+  private entryFollowsSelection(): boolean {
+    if (this.session.state !== "ready" && this.session.state !== "hint") return false;
+    return this.session.anchor !== null;
+  }
+
+  private handleScroll(): void {
+    // 其余状态直接跳过，避免滚动路径白付一次取选区矩形的布局开销。
+    if (!this.entryFollowsSelection()) return;
+    // 合帧到 rAF：滚动事件高频，而判定必须读“当前”选区矩形（选区时刻的
+    // 旧坐标在滚动后恒为“在视口内”，会让关闭语义完全失效）。
+    if (this.scrollFrame !== null) return;
+    this.scrollFrame = window.requestAnimationFrame(() => {
+      this.scrollFrame = null;
+      // 回调触发时状态可能已变，再查一次。
+      if (!this.entryFollowsSelection()) return;
+      const snapshot = this.snapshotWindowSelection();
+      this.apply(
+        this.session.on({
+          kind: "scroll",
+          anchorInViewport: anchorInViewport(snapshot?.rect ?? null, {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          }),
+        }),
+      );
+    });
   }
 
   private handleBlur(): void {
@@ -173,6 +206,10 @@ export class SelectionController {
   }
 
   private apply(outcome: SessionOutcome): void {
+    // 会话作废了在途请求（关闭 / 换词 / 超长提示）时，通知后台中止计费。
+    if ("cancelInFlight" in outcome && outcome.cancelInFlight) {
+      void requestCancelExplain();
+    }
     switch (outcome.action) {
       case "none":
         return;
@@ -257,14 +294,13 @@ export class SelectionController {
       this.hintTimer = null;
     }
   }
+}
 
-  private anchorInViewport(rect: RectLike): boolean {
-    const margin = 8;
-    return (
-      rect.bottom > margin &&
-      rect.top < window.innerHeight - margin &&
-      rect.right > margin &&
-      rect.left < window.innerWidth - margin
-    );
-  }
+/** Esc 兜底守卫：只让卡片内真实可编辑元素留住 Esc，页面输入框不在此列。 */
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
 }

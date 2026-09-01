@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { computePlacement, type RectLike, type Size } from "./position-card.ts";
+import { anchorInViewport, computePlacement, type RectLike, type Size } from "./position-card.ts";
 
 const viewport: Size = { width: 1280, height: 800 };
 const anchor: RectLike = { left: 100, right: 200, top: 100, bottom: 120 };
@@ -57,5 +57,39 @@ describe("computePlacement", () => {
   it("自定义 gap 生效", () => {
     const p = computePlacement(anchor, { width: 400, height: 200 }, viewport, 40);
     assert.equal(p.top, 160);
+  });
+});
+
+describe("anchorInViewport", () => {
+  const screen: Size = { width: 1280, height: 800 };
+
+  it("选区矩形在视口内时为 true", () => {
+    assert.equal(anchorInViewport({ left: 100, right: 200, top: 100, bottom: 120 }, screen), true);
+  });
+
+  it("向上滚动出视口（bottom 高于顶部边距）时为 false", () => {
+    // 模拟选区随页面向上滚走：当前 bottom 只剩 5px
+    assert.equal(anchorInViewport({ left: 100, right: 200, top: -20, bottom: 5 }, screen), false);
+  });
+
+  it("向下滚动出视口（top 低于底部边距）时为 false", () => {
+    assert.equal(anchorInViewport({ left: 100, right: 200, top: 850, bottom: 870 }, screen), false);
+  });
+
+  it("水平滚出视口时为 false", () => {
+    assert.equal(
+      anchorInViewport({ left: 1300, right: 1400, top: 100, bottom: 120 }, screen),
+      false,
+    );
+    assert.equal(anchorInViewport({ left: -100, right: 4, top: 100, bottom: 120 }, screen), false);
+  });
+
+  it("取不到实时矩形（null）时按出视口处理", () => {
+    assert.equal(anchorInViewport(null, screen), false);
+  });
+
+  it("边界值按严格比较：bottom 恰好等于边距不算可见", () => {
+    assert.equal(anchorInViewport({ left: 100, right: 200, top: 0, bottom: 8 }, screen), false);
+    assert.equal(anchorInViewport({ left: 100, right: 200, top: 792, bottom: 800 }, screen), false);
   });
 });

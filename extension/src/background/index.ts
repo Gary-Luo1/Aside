@@ -1,4 +1,5 @@
 import {
+  isCancelExplainRequest,
   isConfigTestRequest,
   isExplainTermRequest,
   isOptionsPageSender,
@@ -9,6 +10,8 @@ import {
 } from "../shared/messages.ts";
 import { INVALID_TERM_HINT, sanitizeTerm } from "../shared/term.ts";
 import {
+  allowsCardSetup,
+  CONFIG_LOCKED_MESSAGE,
   dropLegacyRestoreSelectionSetting,
   loadConfig,
   restrictStorageAccessLevel,
@@ -92,6 +95,12 @@ async function handleMessage(
     return coordinator.explain(term, sender.tab?.id, sender.frameId);
   }
 
+  if (isCancelExplainRequest(message)) {
+    if (!isPageSender(sender)) return undefined;
+    coordinator.cancel(sender.tab?.id, sender.frameId);
+    return { ok: true };
+  }
+
   if (isSetupConfigRequest(message)) {
     if (!isPageSender(sender)) return undefined;
     return handleSetupConfig(message.config);
@@ -101,13 +110,19 @@ async function handleMessage(
 }
 
 /**
- * 卡片内配置：校验 → 申请主机权限 → 落盘。
+ * 卡片内配置：校验 → 配置锁定检查 → 申请主机权限 → 落盘。
+ * 已有有效配置时拒绝页面侧改写，防止任意 frame 把计费与划词记录重定向到别的密钥。
  * 权限申请需要用户手势；拿不到手势时返回引导用户去设置页的提示，不静默失败。
  */
 async function handleSetupConfig(raw: unknown): Promise<SetupConfigResult> {
   const validation = validateConfig(raw);
   if (!validation.ok) {
     return { ok: false, error: { code: "invalid_config", message: validation.message } };
+  }
+
+  const existing = await loadConfig();
+  if (!allowsCardSetup(existing)) {
+    return { ok: false, error: { code: "config_locked", message: CONFIG_LOCKED_MESSAGE } };
   }
 
   const granted = await ensureHostPermission(validation.config.baseUrl);

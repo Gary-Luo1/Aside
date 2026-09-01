@@ -75,26 +75,17 @@ async function requestChatCompletion(
     try {
       payload = await response.json();
     } catch {
-      return {
-        ok: false,
-        error: { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" },
-      };
+      return { ok: false, error: badResponse() };
     }
 
     const content = extractAssistantContent(payload);
     if (content === null) {
-      return {
-        ok: false,
-        error: { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" },
-      };
+      return { ok: false, error: badResponse() };
     }
 
     const explanation = parseExplanation(content);
     if (!explanation) {
-      return {
-        ok: false,
-        error: { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" },
-      };
+      return { ok: false, error: badResponse() };
     }
 
     return { ok: true, explanation };
@@ -120,7 +111,7 @@ async function requestChatCompletion(
   }
 }
 
-function extractAssistantContent(payload: unknown): string | null {
+export function extractAssistantContent(payload: unknown): string | null {
   if (!isRecord(payload)) return null;
   const choices = payload.choices;
   if (!Array.isArray(choices) || choices.length === 0) return null;
@@ -128,12 +119,39 @@ function extractAssistantContent(payload: unknown): string | null {
   if (!isRecord(first)) return null;
   const message = first.message;
   if (!isRecord(message)) return null;
-  const content = message.content;
-  return typeof content === "string" && content.trim().length > 0 ? content : null;
+  return normalizeContent(message.content);
 }
 
-function mapHttpError(status: number): ExtensionError {
+/**
+ * 兼容 string 与分段数组两种 content 形状：
+ * 不少 OpenAI 兼容端点（分段输出 / 多模态混排）返回 [{type:"text",text:...}]。
+ */
+function normalizeContent(content: unknown): string | null {
+  if (typeof content === "string") {
+    return content.trim().length > 0 ? content : null;
+  }
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) => (isRecord(part) && typeof part.text === "string" ? part.text : ""))
+      .join("")
+      .trim();
+    return text.length > 0 ? text : null;
+  }
+  return null;
+}
+
+/** 响应形状或内容不可解析时的统一错误。 */
+function badResponse(): ExtensionError {
+  return { code: "bad_response", message: "暂时没法生成解释，请稍后重试。" };
+}
+
+export function mapHttpError(status: number): ExtensionError {
   switch (status) {
+    case 400:
+      return {
+        code: "bad_request",
+        message: "接口拒绝了请求（400），请检查模型名称是否被该接口支持。",
+      };
     case 401:
     case 403:
       return { code: "auth", message: "密钥不正确，请检查后再试。" };

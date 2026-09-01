@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   MESSAGE_TYPES,
+  isCancelExplainRequest,
   isConfigTestResult,
   isConfigTestRequest,
   isExplainResult,
@@ -55,6 +56,13 @@ describe("请求守卫", () => {
   it("type 对不上时一律拒绝，不因字段齐全而放行", () => {
     const payload = { type: "EXPLAIN_TERM_REQUEST_something", term: "API" };
     assert.equal(isExplainTermRequest(payload), false);
+  });
+
+  it("接受形状正确的取消请求，拒绝其他类型与非法入参", () => {
+    assert.equal(isCancelExplainRequest({ type: MESSAGE_TYPES.CANCEL_EXPLAIN_REQUEST }), true);
+    assert.equal(isCancelExplainRequest({ type: MESSAGE_TYPES.EXPLAIN_TERM_REQUEST }), false);
+    assert.equal(isCancelExplainRequest(null), false);
+    assert.equal(isCancelExplainRequest("CANCEL_EXPLAIN_REQUEST"), false);
   });
 });
 

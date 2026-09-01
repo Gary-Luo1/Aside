@@ -14,9 +14,10 @@ await mkdir(outDir, { recursive: true });
 await rm(zipPath, { force: true });
 
 // 用系统 zip 打包：只收 dist 内的文件，不带上层目录名。
+// 注意 spawnSync 无错时 error 是 undefined，不能用 !== null 判断。
 const result = spawnSync("zip", ["-r", "-q", zipPath, "."], { cwd: dist });
 
-if (result.error ?? result.status !== 0) {
+if (result.error || result.status !== 0) {
   console.error("打包失败。请确认已安装 zip，或在文件管理器里手动压缩 extension/dist。");
   process.exit(1);
 }

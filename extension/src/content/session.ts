@@ -43,9 +43,9 @@ export type SessionEvent =
 /** 会话决策输出；控制器据此执行渲染、计时器与请求副作用。 */
 export type SessionOutcome =
   | { action: "none" }
-  | { action: "close" }
-  | { action: "show-hint"; message: string; anchor: RectLike }
-  | { action: "show-ready"; term: string; anchor: RectLike }
+  | { action: "close"; cancelInFlight: boolean }
+  | { action: "show-hint"; message: string; anchor: RectLike; cancelInFlight: boolean }
+  | { action: "show-ready"; term: string; anchor: RectLike; cancelInFlight: boolean }
   | { action: "show-followup"; term: string; anchor: RectLike }
   | { action: "hide-followup" }
   | { action: "start-explain"; seq: number; term: string }
@@ -80,6 +80,8 @@ export class SelectionSession {
   private before: Anchor | null = null;
   /** 鼠标正按在入口/卡片内部时，忽略页面清空选区导致的入口关闭。 */
   private suppressCollapseClose = false;
+  /** 有请求在途且其响应仍会被接受（seq 未被作废）；作废时应通知后台取消。 */
+  private inFlightExplain = false;
   private readonly sanitizeTermFn: (raw: string) => string | null;
 
   constructor(options: SelectionSessionOptions) {
@@ -145,6 +147,7 @@ export class SelectionSession {
         this.seq += 1;
         this.uiState = "loading";
         this.currentTerm = event.term;
+        this.inFlightExplain = true;
         return { action: "start-explain", seq: this.seq, term: event.term };
       }
       case "explain-settled":
@@ -185,6 +188,9 @@ export class SelectionSession {
 
   private onPointerUp(insideOverlay: boolean, selection: SelectionSnapshot | null): SessionOutcome {
     this.isDragging = false;
+    // 卡片内按下、卡外松开时 click 不会命中 overlay（目标落在公共祖先上），
+    // 这里补一次复位，避免塌陷关闭被长期抑制。
+    if (!insideOverlay) this.suppressCollapseClose = false;
     const before = this.before;
     this.before = null;
     if (insideOverlay) {
@@ -258,6 +264,7 @@ export class SelectionSession {
 
   private onExplainSettled(seq: number, result: ExplainResult): SessionOutcome {
     if (seq !== this.seq) return { action: "none" }; // 过期响应
+    this.inFlightExplain = false;
     this.uiState = result.ok ? "success" : "error";
     return {
       action: "finish-explain",
@@ -269,32 +276,40 @@ export class SelectionSession {
   }
 
   private showHintOutcome(rect: RectLike): SessionOutcome {
-    this.seq += 1; // 提示出现即作废旧请求结果，避免旧响应覆盖
+    const cancelInFlight = this.invalidateInFlight();
     this.uiState = "hint";
     this.currentTerm = null;
     this.currentAnchor = rect;
-    return { action: "show-hint", message: HINT_MESSAGE, anchor: rect };
+    return { action: "show-hint", message: HINT_MESSAGE, anchor: rect, cancelInFlight };
   }
 
   private showReadyOutcome(term: string, rect: RectLike, fromOverlay = false): SessionOutcome {
     if (this.uiState === "success" && fromOverlay) {
       return { action: "show-followup", term, anchor: rect };
     }
-    this.seq += 1; // 新选词作废旧请求结果
+    const cancelInFlight = this.invalidateInFlight();
     this.uiState = "ready";
     this.currentTerm = term;
     this.currentAnchor = rect;
-    return { action: "show-ready", term, anchor: rect };
+    return { action: "show-ready", term, anchor: rect, cancelInFlight };
   }
 
   private closeOutcome(): SessionOutcome {
-    this.seq += 1; // 作废在途请求结果，关闭后不重新弹出
+    const cancelInFlight = this.invalidateInFlight();
     this.uiState = "idle";
     this.currentTerm = null;
     this.currentAnchor = null;
     this.isDragging = false;
     this.before = null;
-    return { action: "close" };
+    return { action: "close", cancelInFlight };
+  }
+
+  /** 作废在途请求的响应接受权（seq 前移）；返回是否需要通知后台中止。 */
+  private invalidateInFlight(): boolean {
+    const had = this.inFlightExplain;
+    this.inFlightExplain = false;
+    this.seq += 1;
+    return had;
   }
 
   private sameSelection(a: Anchor, b: Anchor): boolean {

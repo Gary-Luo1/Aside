@@ -7,8 +7,36 @@
  * 不复制、不读取、不发送任何未选中内容。
  */
 
+import { isRecord } from "../shared/guard.ts";
+
 const STYLE_ID = "aside-selectable-style";
 const SELECTABLE_ATTR = "data-aside-selectable";
+
+/** 文本扫描的节点预算：超出按「有文本」保守处理，避免大子树拖慢每次按下。 */
+const TEXT_SCAN_NODE_BUDGET = 64;
+
+/** 结构化扫描的最小节点形状：Text 节点带 data，容器带 childNodes。 */
+interface TextScanNode {
+  data?: unknown;
+  childNodes?: ArrayLike<unknown>;
+}
+
+/**
+ * 判断子树里是否有非空白文本，只访问预算内的节点。
+ * 超预算返回 true：误报只会多走一次 user-select 判断（通常立即短路），不会改错 DOM。
+ */
+export function containsNonSpaceText(root: TextScanNode, budget = TEXT_SCAN_NODE_BUDGET): boolean {
+  if (typeof root.data === "string" && root.data.trim().length > 0) return true;
+  const children = root.childNodes;
+  if (children === undefined) return false;
+  for (let i = 0; i < children.length; i += 1) {
+    if (budget <= 0) return true;
+    budget -= 1;
+    const child = children[i];
+    if (isRecord(child) && containsNonSpaceText(child, budget)) return true;
+  }
+  return false;
+}
 
 export class ProtectedSelectionRestorer {
   private attached = false;
@@ -42,9 +70,11 @@ export class ProtectedSelectionRestorer {
   }
 
   private clearSelectableMarks(): void {
-    for (const el of document.querySelectorAll(`[${SELECTABLE_ATTR}]`)) {
+    document.querySelectorAll(`[${SELECTABLE_ATTR}]`).forEach((el) => {
       el.removeAttribute(SELECTABLE_ATTR);
-    }
+    });
+    // 标记清空后样式也不再常驻页面；下次需要时 ensureStyle 会重新注入。
+    document.getElementById(STYLE_ID)?.remove();
   }
 
   private isInteractive(element: Element): boolean {
@@ -55,11 +85,15 @@ export class ProtectedSelectionRestorer {
     );
   }
 
-  /** 目标自身或最多上溯 3 层找到包含非空白文本的元素。 */
+  /**
+   * 目标自身或最多上溯 3 层找到包含非空白文本的元素。
+   * 文本判断走 containsNonSpaceText 的有界扫描，不用 textContent
+   * 整棵序列化——大页面上那会把每次点击变成全子树字符串拷贝。
+   */
   private findTextElement(element: Element): Element | null {
     let current: Element | null = element;
     for (let depth = 0; depth < 4 && current; depth += 1) {
-      if ((current.textContent ?? "").trim().length > 0) return current;
+      if (containsNonSpaceText(current)) return current;
       current = current.parentElement;
     }
     return null;

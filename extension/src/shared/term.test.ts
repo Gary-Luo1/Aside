@@ -26,6 +26,19 @@ describe("sanitizeTerm", () => {
     assert.equal(sanitizeTerm("【《闭包》】"), "闭包");
   });
 
+  it("剥掉包裹符号与空白交替的多层包裹", () => {
+    assert.equal(sanitizeTerm('( "API" )'), "API");
+    assert.equal(sanitizeTerm("（ “闭包” ）"), "闭包");
+    assert.equal(sanitizeTerm("  [ ‘词’ ]  "), "词");
+  });
+
+  it("剔除换行以外的控制字符", () => {
+    assert.equal(sanitizeTerm("\u0000闭包\u0000"), "闭包");
+    assert.equal(sanitizeTerm("\u0007API\u001f"), "API");
+    // 换行仍按「多行选区」拒绝，而不是被剔除后放行
+    assert.equal(sanitizeTerm("前\n后"), null);
+  });
+
   it("保留词内的符号", () => {
     assert.equal(sanitizeTerm("C++"), "C++");
     assert.equal(sanitizeTerm("a.b"), "a.b");
