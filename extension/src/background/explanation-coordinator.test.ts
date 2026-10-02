@@ -5,8 +5,10 @@ import {
   CACHE_TTL_MS,
   ExplanationCoordinator,
   MAX_CONCURRENT_EXPLAINS,
+  explanationCacheKey,
   type ExplainCoordinatorDeps,
 } from "./explanation-coordinator.ts";
+import { PROMPT_VERSION } from "./prompt.ts";
 import type { AiConfig, Explanation } from "../shared/messages.ts";
 
 const config: AiConfig = { baseUrl: "https://api.example.com/v1", apiKey: "k", model: "m" };
@@ -176,6 +178,49 @@ describe("ExplanationCoordinator 结果缓存", () => {
     assert.equal(calls, CACHE_LIMIT + 11);
   });
 
+  it("换密钥后不命中旧解释", async () => {
+    let calls = 0;
+    let apiKey = "k1";
+    const c = new ExplanationCoordinator(
+      deps({
+        loadConfig: async () => ({ ok: true as const, config: { ...config, apiKey } }),
+        explain: async () => {
+          calls += 1;
+          return { ok: true as const, explanation };
+        },
+      }),
+    );
+    await c.explain("闭包", 1, 0);
+    apiKey = "k2";
+    await c.explain("闭包", 1, 0);
+    assert.equal(calls, 2);
+  });
+
+  it("重新解释跳过缓存并写回新结果", async () => {
+    let calls = 0;
+    const c = new ExplanationCoordinator(
+      deps({
+        explain: async () => {
+          calls += 1;
+          return { ok: true as const, explanation: { professional: `P${calls}`, plain: "L" } };
+        },
+      }),
+    );
+    const first = await c.explain("闭包", 1, 0);
+    const refreshed = await c.explain("闭包", 1, 0, { refresh: true });
+    const cached = await c.explain("闭包", 1, 0);
+    assert.equal(calls, 2);
+    assert.equal(first.ok && first.explanation.professional, "P1");
+    assert.equal(refreshed.ok && refreshed.explanation.professional, "P2");
+    assert.equal(cached.ok && cached.explanation.professional, "P2");
+  });
+
+  it("缓存键带上提示词版本", () => {
+    const key = JSON.parse(explanationCacheKey(config, "闭包")) as unknown[];
+    assert.equal(key[0], PROMPT_VERSION);
+    assert.equal(key[4], "闭包");
+  });
+
   it("失败结果不进缓存", async () => {
     let calls = 0;
     const c = new ExplanationCoordinator(
@@ -310,6 +355,41 @@ describe("ExplanationCoordinator 并发控制", () => {
     c.cancel(99, 9);
     const result = await c.explain("闭包", 1, 0);
     assert.equal(result.ok, true);
+  });
+
+  it("并发已满时，已缓存的词仍然返回", async () => {
+    let release = (): void => {};
+    let gate = Promise.resolve();
+    let block = false;
+    let calls = 0;
+    const c = new ExplanationCoordinator(
+      deps({
+        explain: async () => {
+          calls += 1;
+          if (block) await gate;
+          return { ok: true as const, explanation };
+        },
+      }),
+    );
+    await c.explain("缓存词", 1, 0);
+    block = true;
+    gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const pending = [];
+    for (let i = 0; i < MAX_CONCURRENT_EXPLAINS; i += 1) {
+      pending.push(c.explain(`占位${i}`, i, 0));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const hit = await c.explain("缓存词", 9, 0);
+    const rejected = await c.explain("新词", 8, 0);
+    assert.equal(hit.ok, true);
+    assert.equal(rejected.ok, false);
+    if (!rejected.ok) assert.equal(rejected.error.code, "rate_limited");
+    assert.equal(calls, MAX_CONCURRENT_EXPLAINS + 1);
+    release();
+    const results = await Promise.all(pending);
+    for (const result of results) assert.equal(result.ok, true);
   });
 
   it("请求结束后并发计数归还", async () => {

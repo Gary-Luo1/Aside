@@ -1,6 +1,7 @@
 import type { AiConfig, ExplainResult, Explanation, ExtensionError } from "../shared/messages.ts";
 import type { ConfigLoadResult } from "../shared/config.ts";
 import type { ApiResult, RequestOptions } from "./api-client.ts";
+import { PROMPT_VERSION } from "./prompt.ts";
 
 export interface ExplainCoordinatorDeps {
   loadConfig: () => Promise<ConfigLoadResult>;
@@ -12,9 +13,34 @@ export interface ExplainCoordinatorDeps {
 /** 全局在途解释上限：超出直接拒绝，避免多标签页并发打爆接口配额。 */
 export const MAX_CONCURRENT_EXPLAINS = 4;
 
-/** 结果缓存：同一接口 + 模型 + 词不重复计费。 */
+/** 结果缓存：同一提示词版本 + 接口 + 密钥指纹 + 模型 + 词不重复计费。 */
 export const CACHE_LIMIT = 50;
 export const CACHE_TTL_MS = 30 * 60 * 1000;
+
+export interface ExplainCallOptions {
+  /** 跳过读取缓存，仍把新结果写回，供「重新解释」使用。 */
+  refresh?: boolean;
+}
+
+/** 缓存身份。不含完整密钥，只放指纹，换密钥后同一词不会命中旧解释。 */
+export function explanationCacheKey(config: AiConfig, term: string): string {
+  return JSON.stringify([
+    PROMPT_VERSION,
+    config.baseUrl,
+    config.model,
+    fingerprint(config.apiKey),
+    term,
+  ]);
+}
+
+function fingerprint(value: string): string {
+  let hash = 2_166_136_261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(16);
+}
 
 interface CacheEntry {
   explanation: Explanation;
@@ -35,8 +61,37 @@ export class ExplanationCoordinator {
     this.deps = deps;
   }
 
-  async explain(term: string, tabId: number | undefined, frameId?: number): Promise<ExplainResult> {
+  async explain(
+    term: string,
+    tabId: number | undefined,
+    frameId?: number,
+    options?: ExplainCallOptions,
+  ): Promise<ExplainResult> {
     const sessionKey = toFrameSessionKey(tabId, frameId);
+    const configResult = await this.deps.loadConfig();
+    if (!configResult.ok) {
+      if (configResult.reason === "absent") {
+        return {
+          ok: false,
+          error: { code: "unconfigured", message: "还没有填写模型接口，请先打开设置。" },
+        };
+      }
+      return {
+        ok: false,
+        error: { code: "invalid_config", message: configResult.message },
+      };
+    }
+
+    const config = configResult.config;
+    const now = this.deps.now?.() ?? Date.now();
+    const cacheKey = explanationCacheKey(config, term);
+    if (options?.refresh !== true) {
+      const cached = this.readCache(cacheKey, now);
+      if (cached) return { ok: true, explanation: cached };
+    }
+
+    // 查完缓存再占名额：满载时已缓存的词仍能返回。
+    // 检查与占位之间不能 await，否则并发计数会漏。
     // 满载时先拒绝、再谈中止：此时中止同 frame 的旧请求只会两头落空
     // （旧请求作废已计费，新请求又没发出去）。
     if (this.inFlight >= MAX_CONCURRENT_EXPLAINS) {
@@ -47,32 +102,9 @@ export class ExplanationCoordinator {
       this.active.get(sessionKey)?.abort();
       this.active.set(sessionKey, controller);
     }
-
     this.inFlight += 1;
+
     try {
-      const configResult = await this.deps.loadConfig();
-      if (!configResult.ok) {
-        if (configResult.reason === "absent") {
-          return {
-            ok: false,
-            error: { code: "unconfigured", message: "还没有填写模型接口，请先打开设置。" },
-          };
-        }
-        return {
-          ok: false,
-          error: { code: "invalid_config", message: configResult.message },
-        };
-      }
-
-      const config = configResult.config;
-      const now = this.deps.now?.() ?? Date.now();
-      // JSON 序列化做键：天然无分隔符歧义，且把服务商（baseUrl）也纳入缓存身份，
-      // 换接口后同名模型不再命中旧服务商的结果。
-      const cacheKey = JSON.stringify([config.baseUrl, config.model, term]);
-
-      const cached = this.readCache(cacheKey, now);
-      if (cached) return { ok: true, explanation: cached };
-
       const result = await this.deps.explain(config, term, { signal: controller.signal });
       if (!result.ok) return { ok: false, error: result.error };
 

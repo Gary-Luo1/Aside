@@ -1,30 +1,7 @@
+/* 设计变量见 shared/tokens.css，由 overlay 在这份样式之后注入。 */
 :host {
   all: initial;
   z-index: 2147483647;
-  --ink: #1a1410;
-  --ink-soft: #3b2f28;
-  --muted: #6d5648;
-  --surface: #fff8e8;
-  --paper: #f3ead4;
-  --field: #fffdf6;
-  --pink: #ff4f86;
-  --orange: #ff8a2a;
-  --yellow: #ffe14a;
-  --green: #2fbf6a;
-  --blue: #2f7de0;
-  --purple: #8a4fe0;
-  --danger: #e23d5b;
-  --danger-soft: #ffd6e0;
-  --focus: #2f7de0;
-  --on-accent: #12301c;
-  --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
-  --text:
-    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --wax:
-    repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1.4px 5px),
-    repeating-linear-gradient(-28deg, rgba(26, 20, 16, 0.08) 0 1px, transparent 1px 6px);
 }
 
 * {
@@ -107,8 +84,10 @@ button:focus-visible {
 .card {
   position: fixed;
   z-index: 1;
-  width: clamp(540px, 48vw, 660px);
-  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
   color: var(--ink);
   border: 5px solid var(--ink);
   border-radius: 34px 18px 40px 22px / 22px 36px 16px 32px;
@@ -123,6 +102,7 @@ button:focus-visible {
 
 .card-header {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 6px;
   padding: 14px 16px 12px;
@@ -132,7 +112,6 @@ button:focus-visible {
 
 .card-header .kicker {
   display: inline-flex;
-  filter: url("#crayon-wobble");
   font-family: var(--display);
   font-size: 32px;
   letter-spacing: 0.02em;
@@ -211,29 +190,25 @@ button:focus-visible {
 
 .card-body {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 16px;
-  max-height: min(480px, calc(100vh - 32px));
   overflow-y: auto;
 }
 
 .columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .col {
   min-width: 0;
-  padding: 0 16px;
-}
-
-.col:first-child {
-  padding-left: 0;
 }
 
 .col + .col {
-  padding-right: 0;
-  border-left: 4px dashed var(--ink);
+  padding-top: 16px;
+  border-top: 4px dashed var(--ink);
 }
 
 .col h3 {
@@ -267,42 +242,8 @@ button:focus-visible {
   line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
   user-select: text;
   -webkit-user-select: text;
-}
-
-.card.expanded .col p {
-  display: block;
-  overflow: visible;
-}
-
-@media (max-width: 719px) {
-  .columns {
-    grid-template-columns: 1fr;
-  }
-
-  .col + .col {
-    padding-right: 0;
-    padding-top: 16px;
-    margin-top: 16px;
-    border-left: 0;
-    border-top: 4px dashed var(--ink);
-  }
-}
-
-.expand {
-  margin-top: 16px;
-  min-height: 36px;
-  padding: 6px 16px;
-  color: var(--blue);
-  border: 4px solid var(--ink);
-  border-radius: 40% 60% 50% 50% / 50% 40% 60% 50%;
-  background: var(--wax), #dcebff;
-  font-size: 15px;
 }
 
 .loading-body {
@@ -310,8 +251,8 @@ button:focus-visible {
 }
 
 .skeleton-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
@@ -325,7 +266,15 @@ button:focus-visible {
   height: 12px;
   border: 3px solid var(--ink);
   border-radius: 40% 60%;
-  background: var(--wax), #ffe9c4;
+  background-image:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent), var(--wax),
+    linear-gradient(#ffe9c4, #ffe9c4);
+  background-repeat: no-repeat;
+  background-size:
+    200% 100%,
+    auto,
+    auto;
+  animation: skel-shimmer 1.2s ease-in-out infinite;
 }
 
 .skel-title {
@@ -339,12 +288,6 @@ button:focus-visible {
 
 .skel-line.short {
   width: 62%;
-}
-
-@media (max-width: 719px) {
-  .skeleton-cols {
-    grid-template-columns: 1fr;
-  }
 }
 
 .error-body {
@@ -461,12 +404,36 @@ button:focus-visible {
   align-self: flex-start;
 }
 
+.setup-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.setup-preset {
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.setup-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .action-button.primary {
   color: var(--on-accent);
   background: var(--wax), var(--green);
 }
 
 .card-footer {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   padding: 10px 16px;
   border-top: 4px dashed var(--ink);
   background: var(--wax), var(--paper);
@@ -475,8 +442,31 @@ button:focus-visible {
   line-height: 1.6;
 }
 
+.reexplain {
+  min-height: 34px;
+  padding: 4px 14px;
+  color: var(--blue);
+  background: var(--wax), #dcebff;
+  font-size: 14px;
+}
+
 .card-footer p {
   margin: 0;
+}
+
+@keyframes skel-shimmer {
+  from {
+    background-position:
+      120% 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -120% 0,
+      0 0,
+      0 0;
+  }
 }
 
 @keyframes crayon-in {
@@ -497,5 +487,9 @@ button:focus-visible {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .skel {
+    animation: none;
   }
 }

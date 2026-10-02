@@ -6,6 +6,9 @@ import { SYSTEM_PROMPT, buildConfigTestPrompt, buildUserPrompt } from "./prompt.
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
+/** 两栏各 2–4 句足够用；限制输出长度，减少啰嗦和中途被截断的 JSON。 */
+export const MAX_OUTPUT_TOKENS = 1_200;
+
 export type ApiResult =
   { ok: true; explanation: Explanation } | { ok: false; error: ExtensionError };
 
@@ -56,15 +59,7 @@ async function requestChatCompletion(
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.apiKey}`,
       },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userText },
-        ],
-        temperature: 0.3,
-        stream: false,
-      }),
+      body: JSON.stringify(buildChatCompletionBody(config, userText)),
     });
 
     if (!response.ok) {
@@ -109,6 +104,28 @@ async function requestChatCompletion(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function buildChatCompletionBody(
+  config: AiConfig,
+  userText: string,
+): {
+  model: string;
+  messages: Array<{ role: string; content: string }>;
+  temperature: number;
+  max_tokens: number;
+  stream: false;
+} {
+  return {
+    model: config.model,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userText },
+    ],
+    temperature: 0.3,
+    max_tokens: MAX_OUTPUT_TOKENS,
+    stream: false,
+  };
 }
 
 export function extractAssistantContent(payload: unknown): string | null {

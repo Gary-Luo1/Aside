@@ -37,7 +37,7 @@ export type SessionEvent =
   | { kind: "escape" }
   | { kind: "hint-timeout" }
   | { kind: "close" }
-  | { kind: "explain-requested"; term: string }
+  | { kind: "explain-requested"; term: string; refresh?: boolean }
   | { kind: "explain-settled"; seq: number; result: ExplainResult };
 
 /** 会话决策输出；控制器据此执行渲染、计时器与请求副作用。 */
@@ -48,7 +48,7 @@ export type SessionOutcome =
   | { action: "show-ready"; term: string; anchor: RectLike; cancelInFlight: boolean }
   | { action: "show-followup"; term: string; anchor: RectLike }
   | { action: "hide-followup" }
-  | { action: "start-explain"; seq: number; term: string }
+  | { action: "start-explain"; seq: number; term: string; refresh: boolean }
   | {
       action: "finish-explain";
       seq: number;
@@ -148,7 +148,12 @@ export class SelectionSession {
         this.uiState = "loading";
         this.currentTerm = event.term;
         this.inFlightExplain = true;
-        return { action: "start-explain", seq: this.seq, term: event.term };
+        return {
+          action: "start-explain",
+          seq: this.seq,
+          term: event.term,
+          refresh: event.refresh === true,
+        };
       }
       case "explain-settled":
         return this.onExplainSettled(event.seq, event.result);

@@ -61,6 +61,34 @@ describe("parseExplanation", () => {
     assert.equal(result?.professional, "A");
   });
 
+  it("JSON 前后有说明时仍能取出解释", () => {
+    assert.deepEqual(parseExplanation('说明如下：\n{"professional":"A","plain":"B"}\n希望有帮助'), {
+      professional: "A",
+      plain: "B",
+    });
+  });
+
+  it("代码块不在整段开头时仍能解析", () => {
+    assert.deepEqual(parseExplanation('好的\n```json\n{"professional":"A","plain":"B"}\n```\n'), {
+      professional: "A",
+      plain: "B",
+    });
+  });
+
+  it("跳过前面无法当成解释的对象", () => {
+    assert.deepEqual(parseExplanation('{"foo":1} {"professional":"A","plain":"B"}'), {
+      professional: "A",
+      plain: "B",
+    });
+  });
+
+  it("字符串里的花括号不会截断对象", () => {
+    assert.deepEqual(parseExplanation('{"professional":"含 { 括号","plain":"B"}'), {
+      professional: "含 { 括号",
+      plain: "B",
+    });
+  });
+
   it("非法 JSON 返回 null", () => {
     assert.equal(parseExplanation("{not json"), null);
   });

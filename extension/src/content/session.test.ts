@@ -335,6 +335,19 @@ describe("SelectionSession 指针交互", () => {
   });
 });
 
+describe("SelectionSession 重新解释", () => {
+  it("refresh 会传给开始请求，缺省则为 false", () => {
+    const s = session();
+    const refreshed = s.on({ kind: "explain-requested", term: "闭包", refresh: true });
+    assert.equal(refreshed.action, "start-explain");
+    if (refreshed.action === "start-explain") assert.equal(refreshed.refresh, true);
+
+    const again = session();
+    const plain = again.on({ kind: "explain-requested", term: "闭包" });
+    if (plain.action === "start-explain") assert.equal(plain.refresh, false);
+  });
+});
+
 describe("SelectionSession 对抗性时序", () => {
   it("入口点击会把塌陷选区的浏览器打成 loading：click 补同步不得打断解释", () => {
     const s = session();

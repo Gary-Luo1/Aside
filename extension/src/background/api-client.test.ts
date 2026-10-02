@@ -1,6 +1,24 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { extractAssistantContent, mapHttpError } from "./api-client.ts";
+import {
+  MAX_OUTPUT_TOKENS,
+  buildChatCompletionBody,
+  extractAssistantContent,
+  mapHttpError,
+} from "./api-client.ts";
+
+describe("buildChatCompletionBody", () => {
+  it("限制输出长度，并且不强制 response_format", () => {
+    const body = buildChatCompletionBody(
+      { baseUrl: "https://api.example.com/v1", apiKey: "k", model: "m" },
+      "解释这个词",
+    );
+    assert.equal(body.max_tokens, MAX_OUTPUT_TOKENS);
+    assert.equal(body.stream, false);
+    assert.equal("response_format" in body, false);
+    assert.equal(body.messages[1]?.content, "解释这个词");
+  });
+});
 
 describe("extractAssistantContent", () => {
   it("取出字符串 content", () => {

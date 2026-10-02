@@ -2,11 +2,16 @@ import {
   isCancelExplainRequest,
   isConfigTestRequest,
   isExplainTermRequest,
+  isGrantHostPermissionRequest,
+  isOpenOptionsRequest,
   isOptionsPageSender,
   isPageSender,
+  isPublicConfigRequest,
   isSetupConfigRequest,
   type ExtensionError,
+  type PublicConfigResult,
   type SetupConfigResult,
+  type SetupMode,
 } from "../shared/messages.ts";
 import { INVALID_TERM_HINT, sanitizeTerm } from "../shared/term.ts";
 import {
@@ -92,7 +97,9 @@ async function handleMessage(
         error: { code: "invalid_term", message: INVALID_TERM_HINT },
       };
     }
-    return coordinator.explain(term, sender.tab?.id, sender.frameId);
+    return coordinator.explain(term, sender.tab?.id, sender.frameId, {
+      refresh: message.refresh === true,
+    });
   }
 
   if (isCancelExplainRequest(message)) {
@@ -103,25 +110,42 @@ async function handleMessage(
 
   if (isSetupConfigRequest(message)) {
     if (!isPageSender(sender)) return undefined;
-    return handleSetupConfig(message.config);
+    return handleSetupConfig(message.config, message.mode === "replace" ? "replace" : "create");
+  }
+
+  if (isPublicConfigRequest(message)) {
+    if (!isPageSender(sender)) return undefined;
+    return handlePublicConfig();
+  }
+
+  if (isGrantHostPermissionRequest(message)) {
+    if (!isPageSender(sender)) return undefined;
+    return handleGrantHostPermission();
+  }
+
+  if (isOpenOptionsRequest(message)) {
+    if (!isPageSender(sender)) return undefined;
+    await chrome.runtime.openOptionsPage();
+    return { ok: true };
   }
 
   return undefined;
 }
 
 /**
- * 卡片内配置：校验 → 配置锁定检查 → 申请主机权限 → 落盘。
- * 已有有效配置时拒绝页面侧改写，防止任意 frame 把计费与划词记录重定向到别的密钥。
+ * 卡片内配置：校验 → 锁定检查 → 申请主机权限 → 连接测试 → 落盘。
+ * create 在已有有效配置时拒绝，避免任意 frame 静默改写。
+ * replace 只来自用户在认证/模型错误卡片里提交的表单，并且测试失败不会写入。
  * 权限申请需要用户手势；拿不到手势时返回引导用户去设置页的提示，不静默失败。
  */
-async function handleSetupConfig(raw: unknown): Promise<SetupConfigResult> {
+async function handleSetupConfig(raw: unknown, mode: SetupMode): Promise<SetupConfigResult> {
   const validation = validateConfig(raw);
   if (!validation.ok) {
     return { ok: false, error: { code: "invalid_config", message: validation.message } };
   }
 
   const existing = await loadConfig();
-  if (!allowsCardSetup(existing)) {
+  if (mode === "create" && !allowsCardSetup(existing)) {
     return { ok: false, error: { code: "config_locked", message: CONFIG_LOCKED_MESSAGE } };
   }
 
@@ -133,12 +157,52 @@ async function handleSetupConfig(raw: unknown): Promise<SetupConfigResult> {
     };
   }
 
+  const test = await testConnection(validation.config);
+  if (!test.ok) return { ok: false, error: test.error };
+
   try {
     await saveConfig(validation.config);
     return { ok: true };
   } catch {
     return { ok: false, error: { code: "unknown", message: "保存失败，请稍后再试。" } };
   }
+}
+
+/** 卡片预填用。只返回地址和模型名。 */
+async function handlePublicConfig(): Promise<PublicConfigResult> {
+  const existing = await loadConfig();
+  if (!existing.ok) {
+    if (existing.reason === "absent") {
+      return {
+        ok: false,
+        error: { code: "unconfigured", message: "还没有填写模型接口，请先打开设置。" },
+      };
+    }
+    return { ok: false, error: { code: "invalid_config", message: existing.message } };
+  }
+  return { ok: true, baseUrl: existing.config.baseUrl, model: existing.config.model };
+}
+
+/** 已有配置但还没授权时，按存储里的地址申请权限，不把密钥发回页面。 */
+async function handleGrantHostPermission(): Promise<SetupConfigResult> {
+  const existing = await loadConfig();
+  if (!existing.ok) {
+    if (existing.reason === "absent") {
+      return {
+        ok: false,
+        error: { code: "unconfigured", message: "还没有填写模型接口，请先打开设置。" },
+      };
+    }
+    return { ok: false, error: { code: "invalid_config", message: existing.message } };
+  }
+  const granted = await ensureHostPermission(existing.config.baseUrl);
+  if (!granted) {
+    return {
+      ok: false,
+      error: { code: "host_permission", message: PERMISSION_NEEDS_OPTIONS_MESSAGE },
+    };
+  }
+  return { ok: true };
 }
 
 function toUnknownError(): ExtensionError {

@@ -2,6 +2,7 @@ import type { AiConfig } from "../shared/messages.ts";
 import { requestConfigTest } from "../shared/messages.ts";
 import { deleteConfig, loadConfig, saveConfig, validateConfig } from "../shared/config.ts";
 import { ensureHostPermission } from "../shared/host-permission.ts";
+import { PROVIDER_PRESETS } from "../shared/presets.ts";
 
 // 元素来自项目自身固定的 options 页面结构；缺失时立即抛出可读错误，而不是静默拿到 null。
 function mustGet<T extends Element>(selector: string): T {
@@ -19,6 +20,7 @@ const testButton = mustGet<HTMLButtonElement>("#test-connection");
 const saveButton = mustGet<HTMLButtonElement>("#save");
 const deleteButton = mustGet<HTMLButtonElement>("#delete-config");
 const toggleKeyButton = mustGet<HTMLButtonElement>("#toggle-key");
+const presetRow = mustGet<HTMLElement>("#presets");
 
 /** 连接测试的兜底超时：后台无响应时也要把按钮还给用户。 */
 const TEST_TIMEOUT_MS = 20_000;
@@ -44,6 +46,7 @@ async function init(): Promise<void> {
       setStatus(result.message, "error");
     } else {
       deleteButton.hidden = true;
+      setStatus("先测试连接，通过后再保存。", "info");
     }
   } catch {
     setStatus("读取保存的配置失败，请关掉这个页面再打开试试。", "error");
@@ -64,14 +67,17 @@ function setStatus(text: string, tone: "info" | "ok" | "error"): void {
   statusEl.dataset.tone = tone;
 }
 
+function configsEqual(a: AiConfig | null, b: AiConfig): boolean {
+  return a !== null && a.baseUrl === b.baseUrl && a.apiKey === b.apiKey && a.model === b.model;
+}
+
 function refreshSaveAvailability(): void {
-  const current = currentConfig();
-  const matchesTestedConfig =
-    testedConfig !== null &&
-    current.baseUrl === testedConfig.baseUrl &&
-    current.apiKey === testedConfig.apiKey &&
-    current.model === testedConfig.model;
-  saveButton.disabled = !matchesTestedConfig;
+  saveButton.disabled = !configsEqual(testedConfig, currentConfig());
+}
+
+/** 这次测试失败，且失败的就是上次测通的那份配置时，才作废保存资格。 */
+function dropTestedConfigIfSame(attempted: AiConfig): void {
+  if (configsEqual(testedConfig, attempted)) testedConfig = null;
 }
 
 /** 后台卡住时 Promise.race 兜底，避免用户永远停在「正在测试连接…」。 */
@@ -101,7 +107,6 @@ async function handleTestConnection(): Promise<void> {
   try {
     const granted = await ensureHostPermission(validation.config.baseUrl);
     if (!granted) {
-      testedConfig = null;
       refreshSaveAvailability();
       setStatus("需要允许访问这个地址，才能测试和解释。请在浏览器提示里选择允许。", "error");
       return;
@@ -118,12 +123,12 @@ async function handleTestConnection(): Promise<void> {
       refreshSaveAvailability();
       setStatus("连接测试成功，可以保存配置。", "ok");
     } else {
-      testedConfig = null;
+      dropTestedConfigIfSame(validation.config);
       refreshSaveAvailability();
       setStatus(response.error.message, "error");
     }
   } catch (error) {
-    testedConfig = null;
+    dropTestedConfigIfSame(validation.config);
     refreshSaveAvailability();
     setStatus(
       error instanceof Error ? error.message : "暂时连不上，请关掉这个页面再打开试试。",
@@ -136,7 +141,7 @@ async function handleTestConnection(): Promise<void> {
 
 async function handleSave(event: Event): Promise<void> {
   event.preventDefault();
-  if (!testedConfig) {
+  if (!configsEqual(testedConfig, currentConfig())) {
     setStatus("请先测试连接，成功后再保存。", "error");
     return;
   }
@@ -172,8 +177,24 @@ function handleToggleKey(): void {
 }
 
 function handleFieldChange(): void {
-  testedConfig = null;
+  const couldSave = !saveButton.disabled;
   refreshSaveAvailability();
+  if (!saveButton.disabled) {
+    setStatus("与已测试通过的配置一致，可以保存。", "ok");
+    return;
+  }
+  if (couldSave || testedConfig) {
+    setStatus("内容已改动，请重新测试连接。", "info");
+  }
+}
+
+function applyPreset(baseUrl: string, model: string, label: string): void {
+  baseUrlInput.value = baseUrl;
+  modelInput.value = model;
+  handleFieldChange();
+  if (saveButton.disabled) {
+    setStatus(`已填入${label}的地址和模型。填写密钥后先测试连接。`, "info");
+  }
 }
 
 testButton.addEventListener("click", () => void handleTestConnection());
@@ -182,6 +203,14 @@ deleteButton.addEventListener("click", () => void handleDelete());
 toggleKeyButton.addEventListener("click", handleToggleKey);
 for (const input of [baseUrlInput, apiKeyInput, modelInput]) {
   input.addEventListener("input", handleFieldChange);
+}
+
+for (const preset of PROVIDER_PRESETS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = preset.label;
+  button.addEventListener("click", () => applyPreset(preset.baseUrl, preset.model, preset.label));
+  presetRow.appendChild(button);
 }
 
 void init();

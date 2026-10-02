@@ -1,9 +1,13 @@
 import {
   requestCancelExplain,
   requestExplainTerm,
+  requestGrantHostPermission,
+  requestOpenOptions,
+  requestPublicConfig,
   requestSetupConfig,
   type AiConfig,
   type SetupConfigResult,
+  type SetupMode,
 } from "../shared/messages.ts";
 import { sanitizeTerm } from "../shared/term.ts";
 import { anchorInViewport } from "./position-card.ts";
@@ -162,17 +166,23 @@ export class SelectionController {
     return selection ? snapshotSelection(selection) : null;
   }
 
-  private explain(term: string): void {
-    this.apply(this.session.on({ kind: "explain-requested", term }));
+  private explain(term: string, refresh = false): void {
+    this.apply(
+      this.session.on(
+        refresh
+          ? { kind: "explain-requested", term, refresh: true }
+          : { kind: "explain-requested", term },
+      ),
+    );
   }
 
   private close(): void {
     this.apply(this.session.on({ kind: "close" }));
   }
 
-  private async runExplain(seq: number, term: string): Promise<void> {
+  private async runExplain(seq: number, term: string, refresh: boolean): Promise<void> {
     try {
-      const result = await requestExplainTerm(term);
+      const result = await requestExplainTerm(term, refresh);
       this.apply(this.session.on({ kind: "explain-settled", seq, result }));
     } catch {
       this.apply(
@@ -188,13 +198,30 @@ export class SelectionController {
     }
   }
 
-  /** 保存卡片内填写的配置；成功后立即用当前词重发解释。 */
-  private async saveConfigAndRetry(config: AiConfig): Promise<SetupConfigResult> {
+  /** 保存卡片内填写的配置；后台会先测通。成功后跳过缓存，用当前词重发解释。 */
+  private async saveConfigAndRetry(config: AiConfig, mode: SetupMode): Promise<SetupConfigResult> {
     try {
-      const result = await requestSetupConfig(config);
+      const result = await requestSetupConfig(config, mode);
       if (result.ok) {
         const term = this.session.term;
-        if (term !== null) this.explain(term);
+        if (term !== null) this.explain(term, true);
+      }
+      return result;
+    } catch {
+      return {
+        ok: false,
+        error: { code: "network", message: "暂时连不上，请刷新这个网页后再试。" },
+      };
+    }
+  }
+
+  /** 已有配置但缺少站点权限时，按存储里的地址授权，再重发解释。 */
+  private async grantAndRetry(): Promise<SetupConfigResult> {
+    try {
+      const result = await requestGrantHostPermission();
+      if (result.ok) {
+        const term = this.session.term;
+        if (term !== null) this.explain(term, true);
       }
       return result;
     } catch {
@@ -248,37 +275,69 @@ export class SelectionController {
           anchor: this.session.anchor,
           onClose: () => this.close(),
         });
-        void this.runExplain(outcome.seq, outcome.term);
+        void this.runExplain(outcome.seq, outcome.term, outcome.refresh);
         return;
       }
-      case "finish-explain": {
-        const data: RenderData = {
-          term: outcome.term,
-          anchor: outcome.anchor,
-          onClose: () => this.close(),
-        };
-        if (outcome.result.ok) {
-          data.explanation = outcome.result.explanation;
-        } else {
-          const code = outcome.result.error.code;
-          data.error = outcome.result.error;
-          if (code === "unconfigured" || code === "host_permission") {
-            // 卡片内直接配置：保存成功后立刻重发解释，全程不离开当前页。
-            data.setup = {
-              initial: EMPTY_CONFIG,
-              onSave: (config) => this.saveConfigAndRetry(config),
-            };
-          } else {
-            data.onRetry = () => {
-              const term = this.session.term;
-              if (term !== null) this.explain(term);
-            };
-          }
-        }
-        this.ensureOverlay().render(outcome.result.ok ? "success" : "error", data);
+      case "finish-explain":
+        void this.renderSettled(outcome);
         return;
-      }
     }
+  }
+
+  private async renderSettled(
+    outcome: Extract<SessionOutcome, { action: "finish-explain" }>,
+  ): Promise<void> {
+    const data: RenderData = {
+      term: outcome.term,
+      anchor: outcome.anchor,
+      onClose: () => this.close(),
+    };
+    if (outcome.result.ok) {
+      data.explanation = outcome.result.explanation;
+      data.onRefresh = () => {
+        const term = this.session.term;
+        if (term !== null) this.explain(term, true);
+      };
+      this.renderIfCurrent(outcome.term, "success", data);
+      return;
+    }
+
+    const code = outcome.result.error.code;
+    data.error = outcome.result.error;
+    data.onOpenOptions = () => void requestOpenOptions();
+    if (code === "unconfigured" || code === "invalid_config") {
+      data.setup = {
+        mode: "create",
+        initial: EMPTY_CONFIG,
+        onSave: (config) => this.saveConfigAndRetry(config, "create"),
+      };
+    } else if (code === "auth" || code === "not_found" || code === "bad_request") {
+      const pub = await requestPublicConfig();
+      if (!this.isCurrentResult(outcome.term)) return;
+      data.setup = {
+        mode: "replace",
+        initial: pub.ok ? { baseUrl: pub.baseUrl, apiKey: "", model: pub.model } : EMPTY_CONFIG,
+        onSave: (config) => this.saveConfigAndRetry(config, "replace"),
+      };
+    } else if (code === "host_permission") {
+      data.onGrantPermission = () => this.grantAndRetry();
+    } else if (code !== "config_locked") {
+      data.onRetry = () => {
+        const term = this.session.term;
+        if (term !== null) this.explain(term);
+      };
+    }
+    this.renderIfCurrent(outcome.term, "error", data);
+  }
+
+  /** 异步预填返回时，会话可能已经关掉或换成了另一个词。 */
+  private isCurrentResult(term: string): boolean {
+    return this.session.state === "error" && this.session.term === term;
+  }
+
+  private renderIfCurrent(term: string, state: "success" | "error", data: RenderData): void {
+    if (this.session.state !== state || this.session.term !== term) return;
+    this.ensureOverlay().render(state, data);
   }
 
   private scheduleHintTimer(): void {

@@ -9,10 +9,6 @@
   <body>
     <svg class="crayon-filters" aria-hidden="true" focusable="false">
       <defs>
-        <filter id="crayon-wobble" x="-12%" y="-12%" width="124%" height="124%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="3" seed="8" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="6.5" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
         <filter id="crayon-sketch" x="-18%" y="-18%" width="136%" height="136%">
           <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="4" seed="2" result="n" />
           <feDisplacementMap in="SourceGraphic" in2="n" scale="11" xChannelSelector="R" yChannelSelector="B" />
@@ -85,6 +81,9 @@
           </div>
 
           <form id="config-form" novalidate>
+            <div class="presets" id="presets" role="group" aria-label="常用接口示例"></div>
+            <p class="preset-note">点一下填入地址和模型，密钥仍要自己填。改过之后需要重新测试才能保存。</p>
+
             <div class="field">
               <label for="base-url">接口地址</label>
               <input

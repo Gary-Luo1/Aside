@@ -7,6 +7,7 @@ import {
   isConfigTestRequest,
   isExplainResult,
   isExplainTermRequest,
+  isPublicConfigResult,
   isSetupConfigRequest,
 } from "./messages.ts";
 
@@ -26,6 +27,53 @@ describe("请求守卫", () => {
 
   it("拒绝缺少 term 的解释请求", () => {
     assert.equal(isExplainTermRequest({ type: MESSAGE_TYPES.EXPLAIN_TERM_REQUEST }), false);
+  });
+
+  it("refresh 只能是布尔值", () => {
+    assert.equal(
+      isExplainTermRequest({
+        type: MESSAGE_TYPES.EXPLAIN_TERM_REQUEST,
+        term: "API",
+        refresh: true,
+      }),
+      true,
+    );
+    assert.equal(
+      isExplainTermRequest({
+        type: MESSAGE_TYPES.EXPLAIN_TERM_REQUEST,
+        term: "API",
+        refresh: "yes",
+      }),
+      false,
+    );
+  });
+
+  it("就地配置的 mode 只能是 create 或 replace", () => {
+    assert.equal(
+      isSetupConfigRequest({
+        type: MESSAGE_TYPES.SETUP_CONFIG_REQUEST,
+        config: { model: "x" },
+        mode: "replace",
+      }),
+      true,
+    );
+    assert.equal(
+      isSetupConfigRequest({
+        type: MESSAGE_TYPES.SETUP_CONFIG_REQUEST,
+        config: { model: "x" },
+        mode: "overwrite",
+      }),
+      false,
+    );
+  });
+
+  it("公开配置响应不能带上缺字段的成功结果", () => {
+    assert.equal(isPublicConfigResult({ ok: true, baseUrl: "https://a.test", model: "m" }), true);
+    assert.equal(isPublicConfigResult({ ok: true, baseUrl: "https://a.test" }), false);
+    assert.equal(
+      isPublicConfigResult({ ok: true, baseUrl: "https://a.test", model: "m", apiKey: "secret" }),
+      true,
+    );
   });
 
   it("接受形状正确的测试连接请求", () => {

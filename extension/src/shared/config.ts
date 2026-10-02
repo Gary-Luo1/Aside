@@ -110,9 +110,9 @@ export const CONFIG_LOCKED_MESSAGE =
   "已保存过接口配置。如需更换，请点工具栏的 Aside 图标，在设置页里修改。";
 
 /**
- * 卡片内配置只在「当前没有有效配置」时允许：
+ * 卡片内首次写入只在「当前没有有效配置」时允许：
  * 首次配置（absent）或覆盖损坏配置（invalid）。
- * 有效配置一旦存在，任意页面 frame 都不能再静默改写计费去向与密钥。
+ * 已有有效配置时，create 被拒绝；用户改正密钥或模型走 replace，且必须先测通。
  */
 export function allowsCardSetup(existing: ConfigLoadResult): boolean {
   return !existing.ok;

@@ -1,0 +1,30 @@
+/* 卡片与设置页共用的设计变量。content 在 shadow 里注入；options 由构建拼到样式前面。 */
+:root,
+:host {
+  color-scheme: light;
+  --ink: #1a1410;
+  --ink-soft: #3b2f28;
+  --muted: #6d5648;
+  --surface: #fff8e8;
+  --paper: #f3ead4;
+  --field: #fffdf6;
+  --pink: #ff4f86;
+  --orange: #ff8a2a;
+  --yellow: #ffe14a;
+  --green: #2fbf6a;
+  --blue: #2f7de0;
+  --purple: #8a4fe0;
+  --danger: #e23d5b;
+  --danger-soft: #ffd6e0;
+  --ok-soft: #d7f6e2;
+  --focus: #2f7de0;
+  --on-accent: #12301c;
+  --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
+  --text:
+    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --wax:
+    repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1.4px 5px),
+    repeating-linear-gradient(-28deg, rgba(26, 20, 16, 0.08) 0 1px, transparent 1px 6px);
+}

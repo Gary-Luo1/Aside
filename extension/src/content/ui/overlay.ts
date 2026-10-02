@@ -3,16 +3,20 @@ import type {
   Explanation,
   ExtensionError,
   SetupConfigResult,
+  SetupMode,
 } from "../../shared/messages.ts";
+import { PROVIDER_PRESETS, type ProviderPreset } from "../../shared/presets.ts";
 import { computePlacement, type RectLike } from "../position-card.ts";
 import { snapshotSelection } from "../selection-snapshot.ts";
 import type { SelectionSnapshot, UiState } from "../session.ts";
 import styles from "./styles.css";
+import tokens from "../../shared/tokens.css";
 import gochiHand from "../../../public/fonts/gochi-hand.woff2";
 import { isTrustedOverlayClick } from "./trusted-click.ts";
 
 /** 卡片内配置表单的数据与回调；保存成功后由控制器自动重试解释。 */
 export interface SetupFormData {
+  mode: SetupMode;
   initial: AiConfig;
   onSave: (config: AiConfig) => Promise<SetupConfigResult>;
 }
@@ -27,7 +31,10 @@ export interface RenderData {
   setup?: SetupFormData;
   onExplain?: (term: string) => void;
   onRetry?: () => void;
+  onRefresh?: () => void;
   onClose?: () => void;
+  onOpenOptions?: () => void;
+  onGrantPermission?: () => Promise<SetupConfigResult>;
 }
 
 /** 页面内解释 UI 的窄接口：渲染、关闭与命中判断；宿主生命周期由实现内部管理。 */
@@ -60,16 +67,9 @@ export class ExplanationOverlay implements OverlayApi {
     // closed：页面 JS 不能通过 host.shadowRoot 读取解释或点击入口。
     this.shadowRoot = this.host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = `@font-face{font-family:"Gochi Hand";font-style:normal;font-weight:400;font-display:swap;src:url("${gochiHand}") format("woff2");}${styles}`;
+    // tokens 放在组件样式后面：`:host { all: initial }` 会清掉自定义属性，变量必须后写。
+    style.textContent = `@font-face{font-family:"Gochi Hand";font-style:normal;font-weight:400;font-display:swap;src:url("${gochiHand}") format("woff2");}${styles}${tokens}`;
     this.shadowRoot.appendChild(style);
-    const filters = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    filters.setAttribute("aria-hidden", "true");
-    filters.setAttribute("focusable", "false");
-    filters.setAttribute("width", "0");
-    filters.setAttribute("height", "0");
-    filters.innerHTML =
-      '<defs><filter id="crayon-wobble" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="3" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6.5" xChannelSelector="R" yChannelSelector="G"/></filter></defs>';
-    this.shadowRoot.appendChild(filters);
     (document.body ?? document.documentElement).appendChild(this.host);
   }
 
@@ -199,16 +199,13 @@ export class ExplanationOverlay implements OverlayApi {
     const card = this.createCardShell(data.term, data.onClose);
     const body = document.createElement("div");
     body.className = "loading-body";
-    const status = document.createElement("span");
-    status.className = "sr-only";
-    status.textContent = "正在解释…";
     const skeleton = document.createElement("div");
     skeleton.className = "skeleton-cols";
     skeleton.setAttribute("aria-hidden", "true");
     skeleton.append(this.createSkeletonColumn(), this.createSkeletonColumn());
-    body.append(status, skeleton);
+    body.append(skeleton);
     card.querySelector(".card-body")!.append(body);
-    this.finalize(card);
+    this.finalize(card, "正在解释…");
   }
 
   private renderSuccess(data: RenderData): void {
@@ -222,23 +219,13 @@ export class ExplanationOverlay implements OverlayApi {
     columns.append(professional, plain);
     body.appendChild(columns);
 
-    const expand = document.createElement("button");
-    expand.type = "button";
-    expand.className = "expand";
-    expand.hidden = true;
-    expand.textContent = "展开完整解释";
-    expand.addEventListener("click", () => {
-      card.classList.toggle("expanded");
-      expand.textContent = card.classList.contains("expanded") ? "收起解释" : "展开完整解释";
-      this.place(card, this.anchorRect);
-    });
-    body.appendChild(expand);
-    this.finalize(card);
-
-    const textEls = [professional.querySelector("p")!, plain.querySelector("p")!];
-    const overflow = textEls.some((el) => el.scrollHeight > el.clientHeight + 1);
-    expand.hidden = !overflow;
-    if (overflow) this.place(card, this.anchorRect);
+    const refresh = document.createElement("button");
+    refresh.type = "button";
+    refresh.className = "action-button reexplain";
+    refresh.textContent = "重新解释";
+    refresh.addEventListener("click", () => data.onRefresh?.());
+    card.querySelector(".card-footer")?.append(refresh);
+    this.finalize(card, `已生成「${data.term}」的专业解释和通俗解释。`);
   }
 
   private renderError(data: RenderData): void {
@@ -252,23 +239,40 @@ export class ExplanationOverlay implements OverlayApi {
     message.textContent = data.error?.message ?? "";
     errorBody.appendChild(message);
 
-    // 未配置 / 未授权：卡片内直接给出配置表单，填完即生效，不跳走。
     if (data.setup) {
-      errorBody.appendChild(this.createSetupForm(data.setup));
+      errorBody.appendChild(this.createSetupForm(data.setup, data.onOpenOptions));
       body.appendChild(errorBody);
-      this.finalize(card);
+      this.finalize(card, data.error?.message ?? "");
       return;
     }
 
     const actions = document.createElement("div");
     actions.className = "error-actions";
 
-    const retry = document.createElement("button");
-    retry.type = "button";
-    retry.className = "action-button primary";
-    retry.textContent = "重试";
-    retry.addEventListener("click", () => data.onRetry?.());
-    actions.appendChild(retry);
+    if (data.onGrantPermission) {
+      errorBody.appendChild(this.createGrantActions(data));
+      body.appendChild(errorBody);
+      this.finalize(card, data.error?.message ?? "");
+      return;
+    }
+
+    if (data.onRetry) {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "action-button primary";
+      retry.textContent = "重试";
+      retry.addEventListener("click", () => data.onRetry?.());
+      actions.appendChild(retry);
+    }
+
+    if (data.onOpenOptions && !data.onRetry) {
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "action-button primary";
+      open.textContent = "打开设置";
+      open.addEventListener("click", () => data.onOpenOptions?.());
+      actions.appendChild(open);
+    }
 
     const close = document.createElement("button");
     close.type = "button";
@@ -279,14 +283,60 @@ export class ExplanationOverlay implements OverlayApi {
 
     errorBody.appendChild(actions);
     body.appendChild(errorBody);
-    this.finalize(card);
+    this.finalize(card, data.error?.message ?? "");
+  }
+
+  private createGrantActions(data: RenderData): HTMLElement {
+    const wrap = document.createElement("div");
+    wrap.className = "setup";
+    const actions = document.createElement("div");
+    actions.className = "error-actions";
+    const grant = document.createElement("button");
+    grant.type = "button";
+    grant.className = "action-button primary";
+    grant.textContent = "允许访问并重试";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "action-button";
+    open.textContent = "打开设置";
+    open.addEventListener("click", () => data.onOpenOptions?.());
+    const status = document.createElement("p");
+    status.className = "setup-status";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    grant.addEventListener("click", () => {
+      grant.disabled = true;
+      open.disabled = true;
+      status.dataset.tone = "info";
+      status.textContent = "正在请求访问权限…";
+      void (async () => {
+        try {
+          const result = await data.onGrantPermission?.();
+          if (result?.ok) {
+            status.dataset.tone = "ok";
+            status.textContent = "已允许，正在解释…";
+            return;
+          }
+          status.dataset.tone = "error";
+          status.textContent = result?.error.message ?? "暂时没能完成授权。";
+        } catch {
+          status.dataset.tone = "error";
+          status.textContent = "暂时没能完成授权。";
+        }
+        grant.disabled = false;
+        open.disabled = false;
+      })();
+    });
+    actions.append(grant, open);
+    wrap.append(actions, status);
+    return wrap;
   }
 
   /**
    * 卡片内配置表单：接口地址 / 密钥 / 模型，保存成功后由控制器自动重试解释。
    * 输入框逐一做事件隔离，尽量不让输入内容穿过 shadow 边界。
    */
-  private createSetupForm(setup: SetupFormData): HTMLElement {
+  private createSetupForm(setup: SetupFormData, onOpenOptions?: () => void): HTMLElement {
     const form = document.createElement("form");
     form.className = "setup";
     form.noValidate = true;
@@ -297,7 +347,12 @@ export class ExplanationOverlay implements OverlayApi {
       "https://api.example.com/v1",
       setup.initial.baseUrl,
     );
-    const apiKey = this.createSetupField("密钥", "password", "", setup.initial.apiKey);
+    const apiKey = this.createSetupField(
+      "密钥",
+      "password",
+      setup.mode === "replace" ? "重新填写密钥" : "",
+      setup.initial.apiKey,
+    );
     const model = this.createSetupField("模型名称", "text", "qwen-plus", setup.initial.model);
 
     const toggle = document.createElement("button");
@@ -321,22 +376,40 @@ export class ExplanationOverlay implements OverlayApi {
     submit.className = "action-button primary setup-submit";
     submit.textContent = "保存并解释";
 
-    form.append(baseUrl.row, apiKey.row, model.row, status, submit);
+    form.append(baseUrl.row, apiKey.row, model.row);
+    this.appendPresets(
+      form,
+      (preset) => {
+        baseUrl.input.value = preset.baseUrl;
+        model.input.value = preset.model;
+      },
+      setup.mode,
+    );
+    form.append(status, submit);
+    if (onOpenOptions) {
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "action-button";
+      open.textContent = "打开设置";
+      open.addEventListener("click", () => onOpenOptions());
+      form.append(open);
+    }
 
     const setStatus = (text: string, tone: "info" | "ok" | "error"): void => {
       status.textContent = text;
       status.dataset.tone = tone;
     };
     const setBusy = (busy: boolean): void => {
-      submit.disabled = busy;
-      toggle.disabled = busy;
+      for (const button of form.querySelectorAll("button")) {
+        if (button instanceof HTMLButtonElement) button.disabled = busy;
+      }
     };
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       event.stopPropagation();
       setBusy(true);
-      setStatus("正在保存…", "info");
+      setStatus("正在测试连接…", "info");
       void (async () => {
         try {
           const result = await setup.onSave({
@@ -346,7 +419,7 @@ export class ExplanationOverlay implements OverlayApi {
           });
           if (result.ok) {
             // 控制器会切到 loading 并重试，保持禁用避免重复提交。
-            setStatus("已保存，正在解释…", "ok");
+            setStatus("连接正常，正在解释…", "ok");
             return;
           }
           setStatus(result.error.message, "error");
@@ -358,6 +431,32 @@ export class ExplanationOverlay implements OverlayApi {
     });
 
     return form;
+  }
+
+  private appendPresets(
+    form: HTMLElement,
+    apply: (preset: ProviderPreset) => void,
+    mode: SetupMode,
+  ): void {
+    const row = document.createElement("div");
+    row.className = "setup-presets";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "常用接口示例");
+    for (const preset of PROVIDER_PRESETS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "action-button setup-preset";
+      button.textContent = preset.label;
+      button.addEventListener("click", () => apply(preset));
+      row.appendChild(button);
+    }
+    const note = document.createElement("p");
+    note.className = "setup-note";
+    note.textContent =
+      mode === "replace"
+        ? "密钥需要重新填写。保存前会先测试连接，通过后才会替换已有配置。"
+        : "点一下填入地址和模型，密钥仍要自己填。保存前会先测试连接。";
+    form.append(row, note);
   }
 
   private createSetupField(
@@ -438,7 +537,12 @@ export class ExplanationOverlay implements OverlayApi {
     footer.className = "card-footer";
     const caveat = document.createElement("p");
     caveat.textContent = "AI 生成内容可能不准确，重要信息请进一步核对。";
-    footer.append(caveat);
+    const live = document.createElement("p");
+    live.className = "sr-only";
+    live.dataset.live = "";
+    live.setAttribute("role", "status");
+    live.setAttribute("aria-live", "polite");
+    footer.append(caveat, live);
 
     card.append(header, body, footer);
     return card;
@@ -471,9 +575,16 @@ export class ExplanationOverlay implements OverlayApi {
     return Boolean(el?.closest(".col p"));
   }
 
-  private finalize(card: HTMLElement): void {
+  private finalize(card: HTMLElement, announcement?: string): void {
     this.cardElement = card;
     this.shadowRoot.appendChild(card);
+    if (announcement) {
+      const live = card.querySelector<HTMLElement>("[data-live]");
+      const text = announcement;
+      requestAnimationFrame(() => {
+        if (live?.isConnected) live.textContent = text;
+      });
+    }
     if (this.anchorRect) {
       this.place(card, this.anchorRect);
     } else {
@@ -503,12 +614,12 @@ export class ExplanationOverlay implements OverlayApi {
     element.style.top = `${placement.top}px`;
   }
 
-  /** 继续解释入口避开关闭/展开，避免叠在控件上却被点成新解释。 */
+  /** 继续解释入口避开关闭和「重新解释」，避免叠在控件上却被点成新解释。 */
   private placeFollowup(trigger: HTMLElement, anchor: RectLike): void {
     this.place(trigger, anchor);
-    const blockers = [...this.shadowRoot.querySelectorAll<HTMLElement>(".close, .expand")].filter(
-      (el) => !el.hidden,
-    );
+    const blockers = [
+      ...this.shadowRoot.querySelectorAll<HTMLElement>(".close, .reexplain"),
+    ].filter((el) => !el.hidden);
     if (blockers.length === 0) return;
 
     const originLeft = Number.parseFloat(trigger.style.left);

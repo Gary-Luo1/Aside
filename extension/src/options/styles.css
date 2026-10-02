@@ -6,34 +6,7 @@
   src: url("public/fonts/gochi-hand.woff2") format("woff2");
 }
 
-:root {
-  color-scheme: light;
-  --ink: #1a1410;
-  --ink-soft: #3b2f28;
-  --muted: #6d5648;
-  --paper: #f3ead4;
-  --surface: #fff8e8;
-  --field: #fffdf6;
-  --pink: #ff4f86;
-  --orange: #ff8a2a;
-  --yellow: #ffe14a;
-  --green: #2fbf6a;
-  --blue: #2f7de0;
-  --purple: #8a4fe0;
-  --danger: #e23d5b;
-  --danger-soft: #ffd6e0;
-  --ok-soft: #d7f6e2;
-  --focus: #2f7de0;
-  --on-accent: #12301c;
-  --display: "Gochi Hand", "Marker Felt", "Comic Sans MS", cursive;
-  --text:
-    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --wax:
-    repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1.4px 5px),
-    repeating-linear-gradient(-28deg, rgba(26, 20, 16, 0.08) 0 1px, transparent 1px 6px);
-}
+/* 设计变量见 shared/tokens.css，构建时写在本文件前面。 */
 
 * {
   box-sizing: border-box;
@@ -184,7 +157,6 @@ input:focus-visible {
 
 .wordmark {
   display: inline-flex;
-  filter: url("#crayon-wobble");
   font-family: var(--display);
   font-size: 64px;
   font-weight: 400;
@@ -251,7 +223,6 @@ input:focus-visible {
   border: 5px solid var(--ink);
   border-radius: 38px 22px 44px 18px / 24px 40px 16px 36px;
   background: var(--wax), var(--surface);
-  filter: url("#crayon-wobble");
   box-shadow: 10px 12px 0 rgba(47, 125, 224, 0.16);
 }
 
@@ -287,6 +258,27 @@ form {
   gap: 16px;
 }
 
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.presets button {
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--blue);
+  background: var(--wax), #dcebff;
+  font-size: 14px;
+}
+
+.preset-note {
+  margin: -8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -314,8 +306,11 @@ input::placeholder {
 }
 
 input:focus {
-  outline: none;
   background: #fff;
+}
+
+input:focus:not(:focus-visible) {
+  outline: none;
 }
 
 input:-webkit-autofill,

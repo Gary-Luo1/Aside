@@ -13,7 +13,8 @@ export function parseExplanation(raw: unknown): Explanation | null {
   if (typeof raw === "string") {
     const text = raw.trim();
     if (text.length === 0) return null;
-    const parsed = tryParseJson(text) ?? tryParseCodeFenceJson(text);
+    const parsed =
+      tryParseJson(text) ?? tryParseCodeFenceJson(text) ?? tryParseEmbeddedObject(text);
     return toExplanation(parsed);
   }
   if (typeof raw === "object" && raw !== null) {
@@ -31,9 +32,56 @@ function tryParseJson(text: string): unknown {
 }
 
 function tryParseCodeFenceJson(text: string): unknown {
-  const match = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(text);
+  const match = /```(?:json)?\s*([\s\S]*?)\s*```/.exec(text);
   if (!match) return null;
   return tryParseJson(match[1] ?? "");
+}
+
+/** 模型在 JSON 前后加了说明时，取出第一个能解析成解释的对象。 */
+function tryParseEmbeddedObject(text: string): unknown {
+  for (const candidate of balancedObjects(text)) {
+    const parsed = tryParseJson(candidate);
+    if (toExplanation(parsed)) return parsed;
+  }
+  return null;
+}
+
+function balancedObjects(text: string): string[] {
+  const results: string[] = [];
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") {
+      if (depth === 0) start = i;
+      depth += 1;
+    } else if (ch === "}" && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        results.push(text.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+  return results;
 }
 
 function toExplanation(value: unknown): Explanation | null {

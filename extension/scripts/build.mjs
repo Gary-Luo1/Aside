@@ -49,10 +49,13 @@ if (watch) {
   await Promise.all(entries.map((item) => build(optionsFor(item))));
 }
 
+const tokensCss = readFileSync(join(root, "src/shared/tokens.css"), "utf8");
+const optionsCss = readFileSync(join(root, "src/options/styles.css"), "utf8");
+
 await Promise.all([
   cp(join(root, "manifest.json"), join(dist, "manifest.json")),
   cp(join(root, "src/options/index.html"), join(dist, "options.html")),
-  cp(join(root, "src/options/styles.css"), join(dist, "options.css")),
+  writeFile(join(dist, "options.css"), `${tokensCss}\n${optionsCss}`, "utf8"),
   cp(join(root, "public"), join(dist, "public"), { recursive: true }),
 ]);
 
