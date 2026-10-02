@@ -335,6 +335,64 @@ describe("SelectionSession 指针交互", () => {
   });
 });
 
+describe("SelectionSession 错误卡片保持", () => {
+  function reachError(s: SelectionSession): void {
+    s.on({ kind: "selection-changed", selection: snap() });
+    const seq = startExplain(s, "闭包");
+    const out = s.on({
+      kind: "explain-settled",
+      seq,
+      result: { ok: false, error: { code: "network", message: "连不上" } },
+    });
+    assert.equal(out.action, "finish-explain");
+    assert.equal(s.state, "error");
+  }
+
+  it("原词仍被选中时不把错误卡片打回入口", () => {
+    const s = session();
+    reachError(s);
+    assert.equal(s.on({ kind: "selection-changed", selection: snap() }).action, "none");
+    assert.equal(s.state, "error");
+    assert.equal(s.term, "闭包");
+  });
+
+  it("卡片内点击后浏览器补发原选区：表单保持打开", () => {
+    const s = session();
+    reachError(s);
+    const selected = snap();
+    assert.equal(
+      s.on({ kind: "pointer-down", insideOverlay: true, selection: selected }).action,
+      "none",
+    );
+    assert.equal(
+      s.on({ kind: "pointer-up", insideOverlay: true, selection: selected }).action,
+      "none",
+    );
+    assert.equal(s.on({ kind: "selection-changed", selection: selected }).action, "none");
+    assert.equal(s.state, "error");
+  });
+
+  it("错误卡片里选中正文不另开入口", () => {
+    const s = session();
+    reachError(s);
+    assert.equal(
+      s.on({ kind: "selection-changed", selection: snap({ text: "密钥", fromOverlay: true }) })
+        .action,
+      "none",
+    );
+    assert.equal(s.state, "error");
+  });
+
+  it("错误态下在页面上改选另一个词会开新入口", () => {
+    const s = session();
+    reachError(s);
+    const out = s.on({ kind: "selection-changed", selection: snap({ text: "柯里化" }) });
+    assert.equal(out.action, "show-ready");
+    if (out.action === "show-ready") assert.equal(out.term, "柯里化");
+    assert.equal(s.state, "ready");
+  });
+});
+
 describe("SelectionSession 重新解释", () => {
   it("refresh 会传给开始请求，缺省则为 false", () => {
     const s = session();

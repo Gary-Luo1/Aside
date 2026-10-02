@@ -238,7 +238,14 @@ export class SelectionSession {
       return { action: "none" };
     }
 
-    if (this.uiState === "success" && !selection.fromOverlay) {
+    // 成功卡片：页面上仍选着当前词时留卡（点卡片会让浏览器再报一次原选区）。
+    // 错误卡片同样要留住：点示例、输入框或「保存并解释」时，原词往往还选着，
+    // 若当成新划词会把表单打回「解释这个词」，已输入的内容直接丢失。
+    // 卡片内的文字也不另开入口，错误态没有「继续解释」。
+    if (this.uiState === "error" && selection.fromOverlay) {
+      return { action: "none" };
+    }
+    if ((this.uiState === "success" || this.uiState === "error") && !selection.fromOverlay) {
       const pageTerm = this.sanitizeTermFn(selection.text);
       if (pageTerm === this.currentTerm) {
         return { action: "none" };
