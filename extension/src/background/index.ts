@@ -25,6 +25,7 @@ import {
 } from "../shared/config.ts";
 import {
   PERMISSION_NEEDS_OPTIONS_MESSAGE,
+  beginHostPermissionRequest,
   ensureHostPermission,
 } from "../shared/host-permission.ts";
 import { explainTerm, testConnection } from "./api-client.ts";
@@ -64,7 +65,10 @@ chrome.runtime.onMessage.addListener(
     sender: chrome.runtime.MessageSender,
     sendResponse: (response: unknown) => void,
   ) => {
-    void handleMessage(message, sender)
+    // 权限申请必须发生在这条消息的同步段。放进 handleMessage 的 await 之后，
+    // 卡片里的点击手势已经失效，浏览器会直接拒绝。
+    const grant = beginSetupGrant(message, sender);
+    void handleMessage(message, sender, grant)
       .then(sendResponse)
       .catch(() => {
         // 失败原因通过稳定的用户可读错误返回，不写日志、不暴露内部细节。
@@ -74,9 +78,21 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
+/** 卡片保存带了接口地址，可以在读存储之前就申请对应 origin。 */
+function beginSetupGrant(
+  message: unknown,
+  sender: chrome.runtime.MessageSender,
+): Promise<boolean> | undefined {
+  if (!isSetupConfigRequest(message) || !isPageSender(sender)) return undefined;
+  const validation = validateConfig(message.config);
+  if (!validation.ok) return Promise.resolve(false);
+  return beginHostPermissionRequest(validation.config.baseUrl);
+}
+
 async function handleMessage(
   message: unknown,
   sender: chrome.runtime.MessageSender,
+  grant?: Promise<boolean>,
 ): Promise<unknown> {
   if (isConfigTestRequest(message)) {
     if (!isOptionsPageSender(sender)) return undefined;
@@ -110,7 +126,11 @@ async function handleMessage(
 
   if (isSetupConfigRequest(message)) {
     if (!isPageSender(sender)) return undefined;
-    return handleSetupConfig(message.config, message.mode === "replace" ? "replace" : "create");
+    return handleSetupConfig(
+      message.config,
+      message.mode === "replace" ? "replace" : "create",
+      grant ?? Promise.resolve(false),
+    );
   }
 
   if (isPublicConfigRequest(message)) {
@@ -138,7 +158,11 @@ async function handleMessage(
  * replace 只来自用户在认证/模型错误卡片里提交的表单，并且测试失败不会写入。
  * 权限申请需要用户手势；拿不到手势时返回引导用户去设置页的提示，不静默失败。
  */
-async function handleSetupConfig(raw: unknown, mode: SetupMode): Promise<SetupConfigResult> {
+async function handleSetupConfig(
+  raw: unknown,
+  mode: SetupMode,
+  grant: Promise<boolean>,
+): Promise<SetupConfigResult> {
   const validation = validateConfig(raw);
   if (!validation.ok) {
     return { ok: false, error: { code: "invalid_config", message: validation.message } };
@@ -149,7 +173,7 @@ async function handleSetupConfig(raw: unknown, mode: SetupMode): Promise<SetupCo
     return { ok: false, error: { code: "config_locked", message: CONFIG_LOCKED_MESSAGE } };
   }
 
-  const granted = await ensureHostPermission(validation.config.baseUrl);
+  const granted = await grant;
   if (!granted) {
     return {
       ok: false,

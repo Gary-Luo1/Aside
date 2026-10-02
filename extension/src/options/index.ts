@@ -1,7 +1,7 @@
 import type { AiConfig } from "../shared/messages.ts";
 import { requestConfigTest } from "../shared/messages.ts";
 import { deleteConfig, loadConfig, saveConfig, validateConfig } from "../shared/config.ts";
-import { ensureHostPermission } from "../shared/host-permission.ts";
+import { beginHostPermissionRequest } from "../shared/host-permission.ts";
 import { PROVIDER_PRESETS } from "../shared/presets.ts";
 
 // 元素来自项目自身固定的 options 页面结构；缺失时立即抛出可读错误，而不是静默拿到 null。
@@ -95,7 +95,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
   }
 }
 
-async function handleTestConnection(): Promise<void> {
+async function handleTestConnection(grant: Promise<boolean>): Promise<void> {
   const validation = validateConfig(currentConfig());
   if (!validation.ok) {
     setStatus(validation.message, "error");
@@ -105,7 +105,7 @@ async function handleTestConnection(): Promise<void> {
   testButton.disabled = true;
   setStatus("正在测试连接…", "info");
   try {
-    const granted = await ensureHostPermission(validation.config.baseUrl);
+    const granted = await grant;
     if (!granted) {
       refreshSaveAvailability();
       setStatus("需要允许访问这个地址，才能测试和解释。请在浏览器提示里选择允许。", "error");
@@ -197,7 +197,16 @@ function applyPreset(baseUrl: string, model: string, label: string): void {
   }
 }
 
-testButton.addEventListener("click", () => void handleTestConnection());
+testButton.addEventListener("click", () => {
+  const validation = validateConfig(currentConfig());
+  if (!validation.ok) {
+    setStatus(validation.message, "error");
+    return;
+  }
+  // request 必须留在点击的同步栈里，不能等 handleTestConnection 里的 await。
+  const grant = beginHostPermissionRequest(validation.config.baseUrl);
+  void handleTestConnection(grant);
+});
 form.addEventListener("submit", (event) => void handleSave(event));
 deleteButton.addEventListener("click", () => void handleDelete());
 toggleKeyButton.addEventListener("click", handleToggleKey);
