@@ -306,13 +306,15 @@ export class ExplanationOverlay implements OverlayApi {
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
     grant.addEventListener("click", () => {
+      // 先把申请发出去，再禁用按钮。点击处理里先改按钮状态，有的浏览器会把这次手势作废。
+      const pending = data.onGrantPermission?.();
       grant.disabled = true;
       open.disabled = true;
       status.dataset.tone = "info";
       status.textContent = "正在请求访问权限…";
       void (async () => {
         try {
-          const result = await data.onGrantPermission?.();
+          const result = await pending;
           if (result?.ok) {
             status.dataset.tone = "ok";
             status.textContent = "已允许，正在解释…";
