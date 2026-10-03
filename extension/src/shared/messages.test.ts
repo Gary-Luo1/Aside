@@ -7,6 +7,7 @@ import {
   isConfigTestRequest,
   isExplainResult,
   isExplainTermRequest,
+  isGrantHostPermissionRequest,
   isPublicConfigResult,
   isSetupConfigRequest,
 } from "./messages.ts";
@@ -87,6 +88,27 @@ describe("请求守卫", () => {
   it("拒绝 config 不是对象的测试连接请求", () => {
     const request = { type: MESSAGE_TYPES.CONFIG_TEST_REQUEST, config: "https://a.test/v1" };
     assert.equal(isConfigTestRequest(request), false);
+  });
+
+  it("授权请求必须带上非空的接口地址", () => {
+    assert.equal(
+      isGrantHostPermissionRequest({
+        type: MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST,
+        baseUrl: "https://api.example.com/v1",
+      }),
+      true,
+    );
+    assert.equal(
+      isGrantHostPermissionRequest({ type: MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST }),
+      false,
+    );
+    assert.equal(
+      isGrantHostPermissionRequest({
+        type: MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST,
+        baseUrl: "",
+      }),
+      false,
+    );
   });
 
   it("接受形状正确的就地配置请求", () => {

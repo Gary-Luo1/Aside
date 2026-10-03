@@ -26,7 +26,7 @@ import {
 import {
   PERMISSION_NEEDS_OPTIONS_MESSAGE,
   beginHostPermissionRequest,
-  ensureHostPermission,
+  originPatternFromBaseUrl,
 } from "../shared/host-permission.ts";
 import { explainTerm, testConnection } from "./api-client.ts";
 import { ExplanationCoordinator } from "./explanation-coordinator.ts";
@@ -67,7 +67,7 @@ chrome.runtime.onMessage.addListener(
   ) => {
     // 权限申请必须发生在这条消息的同步段。放进 handleMessage 的 await 之后，
     // 卡片里的点击手势已经失效，浏览器会直接拒绝。
-    const grant = beginSetupGrant(message, sender);
+    const grant = beginGesturePermission(message, sender);
     void handleMessage(message, sender, grant)
       .then(sendResponse)
       .catch(() => {
@@ -78,15 +78,24 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
-/** 卡片保存带了接口地址，可以在读存储之前就申请对应 origin。 */
-function beginSetupGrant(
+/**
+ * 卡片保存和「允许访问并重试」都带了接口地址，可以在读存储之前就申请对应 origin。
+ * 授权结果随后再和存储里的地址核对，避免按一条对不上的地址当成成功。
+ */
+function beginGesturePermission(
   message: unknown,
   sender: chrome.runtime.MessageSender,
 ): Promise<boolean> | undefined {
-  if (!isSetupConfigRequest(message) || !isPageSender(sender)) return undefined;
-  const validation = validateConfig(message.config);
-  if (!validation.ok) return Promise.resolve(false);
-  return beginHostPermissionRequest(validation.config.baseUrl);
+  if (!isPageSender(sender)) return undefined;
+  if (isSetupConfigRequest(message)) {
+    const validation = validateConfig(message.config);
+    if (!validation.ok) return Promise.resolve(false);
+    return beginHostPermissionRequest(validation.config.baseUrl);
+  }
+  if (isGrantHostPermissionRequest(message)) {
+    return beginHostPermissionRequest(message.baseUrl);
+  }
+  return undefined;
 }
 
 async function handleMessage(
@@ -140,7 +149,7 @@ async function handleMessage(
 
   if (isGrantHostPermissionRequest(message)) {
     if (!isPageSender(sender)) return undefined;
-    return handleGrantHostPermission();
+    return handleGrantHostPermission(message.baseUrl, grant ?? Promise.resolve(false));
   }
 
   if (isOpenOptionsRequest(message)) {
@@ -207,8 +216,14 @@ async function handlePublicConfig(): Promise<PublicConfigResult> {
   return { ok: true, baseUrl: existing.config.baseUrl, model: existing.config.model };
 }
 
-/** 已有配置但还没授权时，按存储里的地址申请权限，不把密钥发回页面。 */
-async function handleGrantHostPermission(): Promise<SetupConfigResult> {
+/**
+ * 已有配置但还没授权时，按点击时带上的地址申请权限，不把密钥发回页面。
+ * 申请已在消息同步段发起。这里只确认它和存储里的地址是同一个 origin。
+ */
+async function handleGrantHostPermission(
+  baseUrl: string,
+  grant: Promise<boolean>,
+): Promise<SetupConfigResult> {
   const existing = await loadConfig();
   if (!existing.ok) {
     if (existing.reason === "absent") {
@@ -219,7 +234,15 @@ async function handleGrantHostPermission(): Promise<SetupConfigResult> {
     }
     return { ok: false, error: { code: "invalid_config", message: existing.message } };
   }
-  const granted = await ensureHostPermission(existing.config.baseUrl);
+  const stored = originPatternFromBaseUrl(existing.config.baseUrl);
+  const requested = originPatternFromBaseUrl(baseUrl);
+  if (stored === null || stored !== requested) {
+    return {
+      ok: false,
+      error: { code: "host_permission", message: PERMISSION_NEEDS_OPTIONS_MESSAGE },
+    };
+  }
+  const granted = await grant;
   if (!granted) {
     return {
       ok: false,

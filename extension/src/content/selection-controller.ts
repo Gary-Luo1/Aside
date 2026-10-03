@@ -215,10 +215,10 @@ export class SelectionController {
     }
   }
 
-  /** 已有配置但缺少站点权限时，按存储里的地址授权，再重发解释。 */
-  private async grantAndRetry(): Promise<SetupConfigResult> {
+  /** 已有配置但缺少站点权限时，按卡片打开前读到的地址授权，再重发解释。 */
+  private async grantAndRetry(baseUrl: string): Promise<SetupConfigResult> {
     try {
-      const result = await requestGrantHostPermission();
+      const result = await requestGrantHostPermission(baseUrl);
       if (result.ok) {
         const term = this.session.term;
         if (term !== null) this.explain(term, true);
@@ -320,7 +320,9 @@ export class SelectionController {
         onSave: (config) => this.saveConfigAndRetry(config, "replace"),
       };
     } else if (code === "host_permission") {
-      data.onGrantPermission = () => this.grantAndRetry();
+      const pub = await requestPublicConfig();
+      if (!this.isCurrentResult(outcome.term)) return;
+      if (pub.ok) data.onGrantPermission = () => this.grantAndRetry(pub.baseUrl);
     } else if (code !== "config_locked") {
       data.onRetry = () => {
         const term = this.session.term;

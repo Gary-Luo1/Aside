@@ -240,7 +240,8 @@ export class ExplanationOverlay implements OverlayApi {
     errorBody.appendChild(message);
 
     if (data.setup) {
-      errorBody.appendChild(this.createSetupForm(data.setup, data.onOpenOptions));
+      errorBody.appendChild(message);
+      errorBody.appendChild(this.createSetupForm(data.setup, data.onOpenOptions, message));
       body.appendChild(errorBody);
       this.finalize(card, data.error?.message ?? "");
       return;
@@ -336,7 +337,11 @@ export class ExplanationOverlay implements OverlayApi {
    * 卡片内配置表单：接口地址 / 密钥 / 模型，保存成功后由控制器自动重试解释。
    * 输入框逐一做事件隔离，尽量不让输入内容穿过 shadow 边界。
    */
-  private createSetupForm(setup: SetupFormData, onOpenOptions?: () => void): HTMLElement {
+  private createSetupForm(
+    setup: SetupFormData,
+    onOpenOptions?: () => void,
+    banner?: HTMLElement,
+  ): HTMLElement {
     const form = document.createElement("form");
     form.className = "setup";
     form.noValidate = true;
@@ -398,6 +403,8 @@ export class ExplanationOverlay implements OverlayApi {
     const setStatus = (text: string, tone: "info" | "ok" | "error"): void => {
       status.textContent = text;
       status.dataset.tone = tone;
+      // 表单已经说出结果时，顶部那句同样的原因就收起来，避免两块粉框叠在一起。
+      if (banner) banner.hidden = text.length > 0;
     };
     const setBusy = (busy: boolean): void => {
       for (const button of form.querySelectorAll("button")) {

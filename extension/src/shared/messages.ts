@@ -58,7 +58,7 @@ export type RuntimeRequest =
   | { type: typeof MESSAGE_TYPES.CANCEL_EXPLAIN_REQUEST }
   | { type: typeof MESSAGE_TYPES.SETUP_CONFIG_REQUEST; config: AiConfig; mode?: SetupMode }
   | { type: typeof MESSAGE_TYPES.PUBLIC_CONFIG_REQUEST }
-  | { type: typeof MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST }
+  | { type: typeof MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST; baseUrl: string }
   | { type: typeof MESSAGE_TYPES.OPEN_OPTIONS_REQUEST };
 
 /** 后台对解释请求的稳定响应。 */
@@ -123,8 +123,13 @@ export function isPublicConfigRequest(
 
 export function isGrantHostPermissionRequest(
   value: unknown,
-): value is { type: typeof MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST } {
-  return isRecord(value) && value.type === MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST;
+): value is { type: typeof MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST; baseUrl: string } {
+  return (
+    isRecord(value) &&
+    value.type === MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST &&
+    typeof value.baseUrl === "string" &&
+    value.baseUrl.length > 0
+  );
 }
 
 export function isOpenOptionsRequest(
@@ -234,9 +239,12 @@ export async function requestPublicConfig(): Promise<PublicConfigResult> {
   return { ok: true, baseUrl: response.baseUrl, model: response.model };
 }
 
-/** 为已保存的接口地址申请主机权限，不把密钥交给页面。 */
-export async function requestGrantHostPermission(): Promise<SetupConfigResult> {
-  const response = await send({ type: MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST });
+/**
+ * 为已保存的接口地址申请主机权限，不把密钥交给页面。
+ * baseUrl 必须在点击前就拿到：后台要在消息的同步段发起申请，不能先读存储。
+ */
+export async function requestGrantHostPermission(baseUrl: string): Promise<SetupConfigResult> {
+  const response = await send({ type: MESSAGE_TYPES.GRANT_HOST_PERMISSION_REQUEST, baseUrl });
   return isSetupConfigResult(response)
     ? response
     : { ok: false, error: { code: "network", message: "暂时连不上，请刷新这个网页后再试。" } };
