@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { extractAssistantContent, mapHttpError } from "./api-client.ts";
+import { EXPLANATION_TEMPERATURE, extractAssistantContent, mapHttpError } from "./api-client.ts";
+
+describe("EXPLANATION_TEMPERATURE", () => {
+  it("定义类输出使用较低温度，减少义项来回换", () => {
+    assert.equal(EXPLANATION_TEMPERATURE, 0.2);
+  });
+});
 
 describe("extractAssistantContent", () => {
   it("取出字符串 content", () => {

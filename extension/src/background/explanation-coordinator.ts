@@ -1,6 +1,7 @@
 import type { AiConfig, ExplainResult, Explanation, ExtensionError } from "../shared/messages.ts";
 import type { ConfigLoadResult } from "../shared/config.ts";
 import type { ApiResult, RequestOptions } from "./api-client.ts";
+import { PROMPT_VERSION } from "./prompt.ts";
 
 export interface ExplainCoordinatorDeps {
   loadConfig: () => Promise<ConfigLoadResult>;
@@ -12,7 +13,7 @@ export interface ExplainCoordinatorDeps {
 /** 全局在途解释上限：超出直接拒绝，避免多标签页并发打爆接口配额。 */
 export const MAX_CONCURRENT_EXPLAINS = 4;
 
-/** 结果缓存：同一接口 + 模型 + 词不重复计费。 */
+/** 结果缓存：同一提示词版本 + 接口 + 模型 + 词不重复计费。 */
 export const CACHE_LIMIT = 50;
 export const CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -68,7 +69,7 @@ export class ExplanationCoordinator {
       const now = this.deps.now?.() ?? Date.now();
       // JSON 序列化做键：天然无分隔符歧义，且把服务商（baseUrl）也纳入缓存身份，
       // 换接口后同名模型不再命中旧服务商的结果。
-      const cacheKey = JSON.stringify([config.baseUrl, config.model, term]);
+      const cacheKey = JSON.stringify([PROMPT_VERSION, config.baseUrl, config.model, term]);
 
       const cached = this.readCache(cacheKey, now);
       if (cached) return { ok: true, explanation: cached };

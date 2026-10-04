@@ -6,6 +6,9 @@ import { SYSTEM_PROMPT, buildConfigTestPrompt, buildUserPrompt } from "./prompt.
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
+/** 解释是定义。温度压低，减少同一术语在两次请求里换成另一个义项。 */
+export const EXPLANATION_TEMPERATURE = 0.2;
+
 export type ApiResult =
   { ok: true; explanation: Explanation } | { ok: false; error: ExtensionError };
 
@@ -62,7 +65,7 @@ async function requestChatCompletion(
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userText },
         ],
-        temperature: 0.3,
+        temperature: EXPLANATION_TEMPERATURE,
         stream: false,
       }),
     });
