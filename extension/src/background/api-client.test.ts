@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  EXPLANATION_TEMPERATURE,
   MAX_OUTPUT_TOKENS,
   buildChatCompletionBody,
   extractAssistantContent,
@@ -14,9 +15,11 @@ describe("buildChatCompletionBody", () => {
       "解释这个词",
     );
     assert.equal(body.max_tokens, MAX_OUTPUT_TOKENS);
+    assert.equal(body.temperature, EXPLANATION_TEMPERATURE);
     assert.equal(body.stream, false);
     assert.equal("response_format" in body, false);
     assert.equal(body.messages[1]?.content, "解释这个词");
+    assert.match(body.messages[0]?.content ?? "", /计算机、机器学习、人工智能/);
   });
 });
 

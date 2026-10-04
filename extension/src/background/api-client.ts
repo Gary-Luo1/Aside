@@ -9,6 +9,9 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 /** 两栏各 2–4 句足够用；限制输出长度，减少啰嗦和中途被截断的 JSON。 */
 export const MAX_OUTPUT_TOKENS = 1_200;
 
+/** 解释是定义。温度压低，减少同一术语在两次请求里换成另一个义项。 */
+export const EXPLANATION_TEMPERATURE = 0.2;
+
 export type ApiResult =
   { ok: true; explanation: Explanation } | { ok: false; error: ExtensionError };
 
@@ -122,7 +125,7 @@ export function buildChatCompletionBody(
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userText },
     ],
-    temperature: 0.3,
+    temperature: EXPLANATION_TEMPERATURE,
     max_tokens: MAX_OUTPUT_TOKENS,
     stream: false,
   };
